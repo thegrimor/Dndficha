@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f5f0;
+  --foreground: #211a12;
+  --card: #ffffff;
+  --card-foreground: #211a12;
+  --border: #ddd4c4;
+  --primary: #7a2e2e;
+  --primary-foreground: #ffffff;
+  --secondary: #eee7d8;
+  --secondary-foreground: #211a12;
+  --muted: #eee7d8;
+  --muted-foreground: #6b6153;
+  --accent: #2f5233;
+  --accent-foreground: #ffffff;
+  --destructive: #b3261e;
+  --ring: #7a2e2e;
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 0.25rem);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 0.25rem);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #171310;
+    --foreground: #ede7db;
+    --card: #201a15;
+    --card-foreground: #ede7db;
+    --border: #3a3128;
+    --primary: #c65b5b;
+    --primary-foreground: #171310;
+    --secondary: #2a231c;
+    --secondary-foreground: #ede7db;
+    --muted: #2a231c;
+    --muted-foreground: #a89d8a;
+    --accent: #4f8a56;
+    --accent-foreground: #171310;
+    --ring: #c65b5b;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
