@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { obtenerPersonaje } from "@/actions/personajes";
+import { CompartirFicha } from "@/components/ficha/compartir-ficha";
 import { FichaCompleta } from "@/components/ficha/ficha-completa";
 
 export default async function FichaPersonajePage({
@@ -13,5 +14,10 @@ export default async function FichaPersonajePage({
 
   if (!personaje) notFound();
 
-  return <FichaCompleta personaje={personaje} />;
+  return (
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <CompartirFicha personaje={personaje} />
+      <FichaCompleta personaje={personaje} />
+    </div>
+  );
 }

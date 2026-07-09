@@ -6,22 +6,47 @@ import { BloqueHabilidades } from "@/components/ficha/bloque-habilidades";
 import { BloqueHechizos } from "@/components/ficha/bloque-hechizos";
 import { BloqueRasgosCompetencias } from "@/components/ficha/bloque-rasgos-competencias";
 import { EncabezadoFicha } from "@/components/ficha/encabezado-ficha";
+import { Tabs } from "@/components/ui/tabs";
 import type { Personaje } from "@/types/personaje";
 
-export function FichaCompleta({ personaje }: { personaje: Personaje }) {
+export function FichaCompleta({
+  personaje,
+  soloLectura = false,
+}: {
+  personaje: Personaje;
+  soloLectura?: boolean;
+}) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <EncabezadoFicha personaje={personaje} />
-      <BloqueCaracteristicas sheet={personaje.sheet} nivel={personaje.level} />
-      <BloqueCombate sheet={personaje.sheet} />
+      <EncabezadoFicha personaje={personaje} soloLectura={soloLectura} />
+      <BloqueCaracteristicas personaje={personaje} soloLectura={soloLectura} />
+      <BloqueCombate personaje={personaje} soloLectura={soloLectura} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <BloqueHabilidades sheet={personaje.sheet} nivel={personaje.level} />
-        <div className="flex flex-col gap-6">
-          <BloqueAtaques sheet={personaje.sheet} />
-          <BloqueEquipo sheet={personaje.sheet} />
-          <BloqueHechizos sheet={personaje.sheet} />
-          <BloqueRasgosCompetencias sheet={personaje.sheet} />
-        </div>
+        <BloqueHabilidades personaje={personaje} soloLectura={soloLectura} />
+        <Tabs
+          items={[
+            {
+              value: "ataques",
+              label: "Ataques",
+              content: <BloqueAtaques personaje={personaje} soloLectura={soloLectura} />,
+            },
+            {
+              value: "equipo",
+              label: "Equipo",
+              content: <BloqueEquipo personaje={personaje} soloLectura={soloLectura} />,
+            },
+            {
+              value: "hechizos",
+              label: "Hechizos",
+              content: <BloqueHechizos personaje={personaje} soloLectura={soloLectura} />,
+            },
+            {
+              value: "rasgos",
+              label: "Rasgos",
+              content: <BloqueRasgosCompetencias personaje={personaje} soloLectura={soloLectura} />,
+            },
+          ]}
+        />
       </div>
     </div>
   );
