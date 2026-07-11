@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { HABILIDADES, NOMBRES_CARACTERISTICAS, type Caracteristica } from "@/lib/dnd/constantes";
 import { IDIOMAS_DISPONIBLES, RAZAS_SRD } from "@/lib/dnd/datos-srd";
+import { DOTES_SRD } from "@/lib/dnd/dotes";
 import { trasfondoDesdeOpen5e } from "@/lib/dnd/trasfondos-open5e";
 import type { BonificadorTrasfondoElegido } from "@/lib/dnd/competencias";
 import { useDebounce } from "@/lib/hooks/use-debounce";
@@ -17,12 +18,7 @@ import {
 } from "@/components/buscador/estado-open5e";
 import { OpcionTarjeta } from "@/components/wizard/opcion-tarjeta";
 import type { DatosWizard, DoteOrigenElegida } from "@/components/wizard/tipos";
-import {
-  descripcionDote,
-  identificadorOpen5e,
-  type Open5eDote,
-  type Open5eTrasfondo,
-} from "@/lib/open5e/types-recursos";
+import { identificadorOpen5e, type Open5eTrasfondo } from "@/lib/open5e/types-recursos";
 
 const BONIFICADOR_INICIAL: BonificadorTrasfondoElegido = { modo: "reparto", mas2: null, mas1: null };
 const DOTE_INICIAL: DoteOrigenElegida = { modo: "catalogo", doteElegida: null, manualNombre: "", manualDescripcion: "" };
@@ -33,7 +29,7 @@ function recortar(texto: string, largo: number): string {
   return texto.length > largo ? `${texto.slice(0, largo).trim()}…` : texto;
 }
 
-async function obtenerCatalogoOpen5e<T>(recurso: "backgrounds" | "feats", edicion: string): Promise<T[]> {
+async function obtenerCatalogoOpen5e<T>(recurso: "backgrounds", edicion: string): Promise<T[]> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_CLIENTE_MS);
   try {
@@ -85,24 +81,10 @@ export function PasoTrasfondo({
   const [textoDote, setTextoDote] = useState("");
   const textoDoteDebounced = useDebounce(textoDote, 200);
 
-  const {
-    data: dotesOpen5e,
-    isLoading: cargandoDotes,
-    isError: errorDotes,
-    refetch: reintentarDotes,
-  } = useQuery({
-    queryKey: ["open5e", "feats", "completo", "2024"],
-    queryFn: () => obtenerCatalogoOpen5e<Open5eDote>("feats", "2024"),
-    enabled: es2024,
-    staleTime: 60 * 60 * 1000,
-    retry: 0,
-  });
-
   const dotesFiltradas = useMemo(() => {
-    if (!dotesOpen5e) return [];
     const texto = textoDoteDebounced.trim().toLowerCase();
-    return texto ? dotesOpen5e.filter((dote) => dote.name.toLowerCase().includes(texto)) : dotesOpen5e;
-  }, [dotesOpen5e, textoDoteDebounced]);
+    return texto ? DOTES_SRD.filter((dote) => dote.nombre.toLowerCase().includes(texto)) : DOTES_SRD;
+  }, [textoDoteDebounced]);
 
   function elegirTrasfondo(bg: Open5eTrasfondo) {
     actualizar({
@@ -307,26 +289,24 @@ export function PasoTrasfondo({
                 className="sm:max-w-xs"
               />
 
-              {errorDotes && <ErrorCatalogoOpen5e onReintentar={() => reintentarDotes()} />}
-              {!errorDotes && cargandoDotes && <CargandoCatalogoOpen5e />}
-              {!errorDotes && !cargandoDotes && dotesFiltradas.length === 0 && <SinResultadosOpen5e />}
+              {dotesFiltradas.length === 0 && <SinResultadosOpen5e />}
 
-              {!errorDotes && dotesFiltradas.length > 0 && (
+              {dotesFiltradas.length > 0 && (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {dotesFiltradas.map((dote) => (
                     <OpcionTarjeta
-                      key={identificadorOpen5e(dote)}
-                      seleccionada={dote.name === datos.doteOrigen.doteElegida?.nombre}
+                      key={dote.id}
+                      seleccionada={dote.nombre === datos.doteOrigen.doteElegida?.nombre}
                       onClick={() =>
                         actualizar({
                           doteOrigen: {
                             ...datos.doteOrigen,
-                            doteElegida: { nombre: dote.name, descripcion: descripcionDote(dote) },
+                            doteElegida: { nombre: dote.nombre, descripcion: dote.descripcion },
                           },
                         })
                       }
-                      titulo={dote.name}
-                      subtitulo={recortar(descripcionDote(dote), LARGO_SUBTITULO)}
+                      titulo={dote.nombre}
+                      subtitulo={dote.descripcion}
                     />
                   ))}
                 </div>

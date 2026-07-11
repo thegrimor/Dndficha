@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  descripcionDote,
   habilidadesTrasfondo,
   herramientasTrasfondo,
   idiomasElegiblesTrasfondo,
@@ -71,34 +70,5 @@ describe("nombreRasgoTrasfondo", () => {
 
   it("cae al nombre del trasfondo si no hay feature", () => {
     expect(nombreRasgoTrasfondo({ name: "Acolyte" })).toBe("Acolyte");
-  });
-});
-
-describe("descripcionDote", () => {
-  it("recorta espacios y devuelve vacío si no hay desc ni benefits", () => {
-    expect(descripcionDote({ name: "Alert", desc: "  Texto  " })).toBe("Texto");
-    expect(descripcionDote({ name: "Alert" })).toBe("");
-  });
-
-  it("junta desc con cada benefits[].desc (esquema real confirmado contra v2)", () => {
-    expect(
-      descripcionDote({
-        name: "Ace Driver",
-        desc: "You are a virtuoso of driving vehicles.",
-        benefits: [{ desc: "You gain an expertise die on ability checks." }, { desc: "You can use your reaction." }],
-      })
-    ).toBe(
-      "You are a virtuoso of driving vehicles. You gain an expertise die on ability checks. You can use your reaction."
-    );
-  });
-
-  it("usa solo benefits cuando desc viene vacío (caso real: Crossbow Expertise)", () => {
-    expect(
-      descripcionDote({
-        name: "Crossbow Expertise",
-        desc: "",
-        benefits: [{ desc: "If proficient with a crossbow, you ignore its loading property." }],
-      })
-    ).toBe("If proficient with a crossbow, you ignore its loading property.");
   });
 });
