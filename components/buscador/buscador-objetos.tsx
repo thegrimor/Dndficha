@@ -23,14 +23,21 @@ import {
 } from "@/lib/open5e/types-recursos";
 
 const TAMANO_LOTE_VISIBLE = 24;
+const TIMEOUT_CLIENTE_MS = 15000;
 
 async function obtenerCatalogoObjetos(edicion: EdicionDnD): Promise<Open5eObjetoMagico[]> {
-  const respuesta = await fetch(`/api/open5e/magicitems?edicion=${edicion}`);
-  if (!respuesta.ok) {
-    throw new Error("open5e_unavailable");
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_CLIENTE_MS);
+  try {
+    const respuesta = await fetch(`/api/open5e/magicitems?edicion=${edicion}`, { signal: controller.signal });
+    if (!respuesta.ok) {
+      throw new Error("open5e_unavailable");
+    }
+    const datos = (await respuesta.json()) as { results: Open5eObjetoMagico[] };
+    return datos.results;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  const datos = (await respuesta.json()) as { results: Open5eObjetoMagico[] };
-  return datos.results;
 }
 
 export function BuscadorObjetos() {

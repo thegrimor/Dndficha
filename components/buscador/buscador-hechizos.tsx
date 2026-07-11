@@ -25,14 +25,21 @@ import {
 } from "@/lib/open5e/types-recursos";
 
 const TAMANO_LOTE_VISIBLE = 24;
+const TIMEOUT_CLIENTE_MS = 15000;
 
 async function obtenerCatalogoHechizos(edicion: EdicionDnD): Promise<Open5eHechizo[]> {
-  const respuesta = await fetch(`/api/open5e/spells?edicion=${edicion}`);
-  if (!respuesta.ok) {
-    throw new Error("open5e_unavailable");
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_CLIENTE_MS);
+  try {
+    const respuesta = await fetch(`/api/open5e/spells?edicion=${edicion}`, { signal: controller.signal });
+    if (!respuesta.ok) {
+      throw new Error("open5e_unavailable");
+    }
+    const datos = (await respuesta.json()) as { results: Open5eHechizo[] };
+    return datos.results;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  const datos = (await respuesta.json()) as { results: Open5eHechizo[] };
-  return datos.results;
 }
 
 export function BuscadorHechizos() {

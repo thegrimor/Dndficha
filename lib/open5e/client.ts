@@ -4,6 +4,13 @@ import type { RespuestaPaginadaOpen5e } from "./types";
 const TIMEOUT_MS = 8000;
 const TAMANO_PAGINA_AGREGADO = 100;
 const MAX_PAGINAS_AGREGADO = 30;
+/**
+ * Presupuesto de tiempo total para agregar todas las páginas de un recurso,
+ * por debajo del límite típico de una función serverless (Netlify corta
+ * sola a los 10-26s según plan). Si se agota, se devuelve lo ya reunido en
+ * vez de dejar la función (y con ella la petición del cliente) colgada.
+ */
+const TIEMPO_MAXIMO_AGREGADO_MS = 9000;
 
 /**
  * Llama a un recurso de Open5e v1 con timeout y un reintento único.
@@ -29,11 +36,16 @@ export async function fetchOpen5e<T>(
 export async function fetchOpen5eCompleto<T>(recurso: RecursoOpen5e): Promise<T[]> {
   const resultados: T[] = [];
   let offset = 0;
+  const inicio = Date.now();
 
   for (let pagina = 0; pagina < MAX_PAGINAS_AGREGADO; pagina++) {
+    if (Date.now() - inicio > TIEMPO_MAXIMO_AGREGADO_MS) {
+      console.error(`[open5e] agregado de "${recurso}" cortado por tiempo tras ${resultados.length} resultados`);
+      break;
+    }
     const datos = await fetchOpen5e<T>(recurso, { limit: TAMANO_PAGINA_AGREGADO, offset });
     resultados.push(...datos.results);
-    if (!datos.next) break;
+    if (!datos.next || datos.results.length === 0) break;
     offset += TAMANO_PAGINA_AGREGADO;
   }
 
@@ -63,15 +75,22 @@ export async function fetchOpen5eV2CompletoPorDocumento<T>(
 ): Promise<T[]> {
   const resultados: T[] = [];
   let offset = 0;
+  const inicio = Date.now();
 
   for (let pagina = 0; pagina < MAX_PAGINAS_AGREGADO; pagina++) {
+    if (Date.now() - inicio > TIEMPO_MAXIMO_AGREGADO_MS) {
+      console.error(
+        `[open5e-v2] agregado de "${recurso}" (${documentKey}) cortado por tiempo tras ${resultados.length} resultados`
+      );
+      break;
+    }
     const datos = await fetchOpen5eV2<T>(recurso, {
       document__key: documentKey,
       limit: TAMANO_PAGINA_AGREGADO,
       offset,
     });
     resultados.push(...datos.results);
-    if (!datos.next) break;
+    if (!datos.next || datos.results.length === 0) break;
     offset += TAMANO_PAGINA_AGREGADO;
   }
 
