@@ -108,8 +108,12 @@ export interface Open5eDote {
   slug?: string;
   key?: string;
   name: string;
+  /** A veces viene vacío: el contenido mecánico real puede estar solo en `benefits` (confirmado contra v2 en vivo). */
   desc?: string;
+  /** Confirmado contra v2 en vivo: la descripción "de verdad" de la dote suele repartirse aquí, no en `desc`. */
+  benefits?: Array<{ desc?: string }>;
   prerequisite?: string;
+  has_prerequisite?: boolean;
   requirement?: string;
   document__title?: string;
   document?: { key: string; display_name?: string; name?: string };
@@ -125,9 +129,17 @@ function primerTexto(obj: Record<string, unknown>, claves: string[]): string | u
   return undefined;
 }
 
-/** Descripción "de la dote" a mostrar: desc si existe, si no una cadena vacía. */
+/**
+ * Descripción "de la dote" a mostrar: junta `desc` (a veces solo una frase
+ * de sabor, a veces vacío del todo) con cada `benefits[].desc`, que es donde
+ * de verdad vive el efecto mecánico (confirmado contra v2 en vivo).
+ */
 export function descripcionDote(dote: Open5eDote): string {
-  return dote.desc?.trim() ?? "";
+  const partes = [
+    dote.desc?.trim(),
+    ...(dote.benefits ?? []).map((beneficio) => beneficio.desc?.trim()).filter(Boolean),
+  ].filter((parte): parte is string => Boolean(parte));
+  return partes.join(" ");
 }
 
 /** Nombre del rasgo que otorga el trasfondo (ej. "Shelter of the Faithful"), con fallback al nombre del trasfondo. */
