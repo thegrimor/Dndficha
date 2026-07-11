@@ -156,6 +156,11 @@ function calcularPuedeAvanzar(paso: number, datos: ReturnType<typeof datosWizard
       const { mas2, mas1 } = datos.bonificadorTrasfondo;
       if (!mas2 || !mas1 || mas2 === mas1) return false;
     }
+    if (datos.edicion === "2024") {
+      const { modo, doteId, manualNombre, manualDescripcion } = datos.doteOrigen;
+      if (modo === "catalogo" && !doteId) return false;
+      if (modo === "manual" && (!manualNombre.trim() || !manualDescripcion.trim())) return false;
+    }
     return true;
   }
 

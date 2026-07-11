@@ -2,12 +2,15 @@
 
 import { HABILIDADES, NOMBRES_CARACTERISTICAS, type Caracteristica } from "@/lib/dnd/constantes";
 import { IDIOMAS_DISPONIBLES, RAZAS_SRD, TRASFONDOS_SRD } from "@/lib/dnd/datos-srd";
+import { DOTES_SRD } from "@/lib/dnd/dotes";
 import type { BonificadorTrasfondoElegido } from "@/lib/dnd/competencias";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { OpcionTarjeta } from "@/components/wizard/opcion-tarjeta";
-import type { DatosWizard } from "@/components/wizard/tipos";
+import type { DatosWizard, DoteOrigenElegida } from "@/components/wizard/tipos";
 
 const BONIFICADOR_INICIAL: BonificadorTrasfondoElegido = { modo: "reparto", mas2: null, mas1: null };
+const DOTE_INICIAL: DoteOrigenElegida = { modo: "catalogo", doteId: null, manualNombre: "", manualDescripcion: "" };
 
 export function PasoTrasfondo({
   datos,
@@ -35,6 +38,7 @@ export function PasoTrasfondo({
                 trasfondoId: t.id,
                 idiomasTrasfondoElegidos: [],
                 bonificadorTrasfondo: BONIFICADOR_INICIAL,
+                doteOrigen: DOTE_INICIAL,
               })
             }
             titulo={t.nombre}
@@ -171,6 +175,68 @@ export function PasoTrasfondo({
             <p className="text-muted-foreground">
               +1 a {opcionesBonificador.map((car) => NOMBRES_CARACTERISTICAS[car]).join(", ")}.
             </p>
+          )}
+        </div>
+      )}
+
+      {es2024 && trasfondo && (
+        <div className="rounded-lg border border-border bg-card p-3 text-sm">
+          <h4 className="mb-2 font-medium">Dote de origen (nivel 1)</h4>
+          <div className="mb-3 flex gap-2">
+            {(["catalogo", "manual"] as const).map((modo) => (
+              <button
+                key={modo}
+                type="button"
+                onClick={() => actualizar({ doteOrigen: { ...DOTE_INICIAL, modo } })}
+                className={cn(
+                  "rounded-md border px-3 py-1.5 text-xs font-medium",
+                  datos.doteOrigen.modo === modo
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card hover:bg-secondary"
+                )}
+              >
+                {modo === "catalogo" ? "Elegir del catálogo" : "Escribir a mano"}
+              </button>
+            ))}
+          </div>
+
+          {datos.doteOrigen.modo === "catalogo" ? (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {DOTES_SRD.map((dote) => (
+                <OpcionTarjeta
+                  key={dote.id}
+                  seleccionada={dote.id === datos.doteOrigen.doteId}
+                  onClick={() =>
+                    actualizar({ doteOrigen: { ...datos.doteOrigen, doteId: dote.id } })
+                  }
+                  titulo={dote.nombre}
+                  subtitulo={dote.descripcion}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium uppercase text-muted-foreground">Nombre de la dote</span>
+                <Input
+                  value={datos.doteOrigen.manualNombre}
+                  onChange={(e) =>
+                    actualizar({ doteOrigen: { ...datos.doteOrigen, manualNombre: e.target.value } })
+                  }
+                  placeholder="Ej. Experto en armas de asta"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium uppercase text-muted-foreground">Descripción</span>
+                <Input
+                  value={datos.doteOrigen.manualDescripcion}
+                  onChange={(e) =>
+                    actualizar({ doteOrigen: { ...datos.doteOrigen, manualDescripcion: e.target.value } })
+                  }
+                  placeholder="Qué hace esta dote"
+                />
+              </label>
+            </div>
           )}
         </div>
       )}

@@ -4,6 +4,7 @@ import { claseArmadura, iniciativa, modificadorConSigno, puntosGolpeIniciales } 
 import { agregarCompetencias, calcularPuntuacionesFinales } from "@/lib/dnd/competencias";
 import { CARACTERISTICAS, HABILIDADES, NOMBRES_CARACTERISTICAS } from "@/lib/dnd/constantes";
 import { CLASES_SRD, RAZAS_SRD, TRASFONDOS_SRD } from "@/lib/dnd/datos-srd";
+import { resolverDoteOrigen } from "@/lib/dnd/dotes";
 import { EDICIONES_DND } from "@/lib/open5e/ediciones";
 import type { DatosWizard } from "@/components/wizard/tipos";
 
@@ -32,6 +33,7 @@ export function PasoResumen({ datos }: { datos: DatosWizard }) {
     idiomasTrasfondoElegidos: datos.idiomasTrasfondoElegidos,
   });
   const pgMax = Math.max(1, puntosGolpeIniciales(clase.dadoGolpe, puntuaciones.con));
+  const doteOrigen = datos.edicion === "2024" ? resolverDoteOrigen(datos.doteOrigen) : null;
 
   return (
     <div className="flex flex-col gap-4 text-sm">
@@ -105,11 +107,13 @@ export function PasoResumen({ datos }: { datos: DatosWizard }) {
       <div className="rounded-lg border border-border bg-card p-3">
         <h4 className="mb-1 font-medium">Rasgos</h4>
         <ul className="list-inside list-disc text-muted-foreground">
-          {[...raza.rasgos, ...clase.rasgosNivel1, trasfondo.rasgo].map((rasgo) => (
-            <li key={rasgo.nombre}>
-              <span className="font-medium text-foreground">{rasgo.nombre}:</span> {rasgo.descripcion}
-            </li>
-          ))}
+          {[...raza.rasgos, ...clase.rasgosNivel1, trasfondo.rasgo, ...(doteOrigen ? [doteOrigen] : [])].map(
+            (rasgo) => (
+              <li key={rasgo.nombre}>
+                <span className="font-medium text-foreground">{rasgo.nombre}:</span> {rasgo.descripcion}
+              </li>
+            )
+          )}
         </ul>
       </div>
     </div>
