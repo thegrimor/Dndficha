@@ -20,9 +20,18 @@ export function PasoRaza({
   actualizar: (cambios: Partial<DatosWizard>) => void;
 }) {
   const raza = RAZAS_SRD.find((r) => r.id === datos.razaId);
+  const es2024 = datos.edicion === "2024";
+  const etiqueta = es2024 ? "especie" : "raza";
 
   return (
     <div className="flex flex-col gap-4">
+      {es2024 && (
+        <p className="text-xs text-muted-foreground">
+          En 2024 las especies no dan bonificador de característica (lo da el trasfondo).
+          Usamos el mismo listado que en 2014 por simplicidad, aunque el PHB 2024 los llama
+          &quot;especies&quot; y varía algo el catálogo oficial.
+        </p>
+      )}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {RAZAS_SRD.map((r) => (
           <OpcionTarjeta
@@ -35,7 +44,7 @@ export function PasoRaza({
               })
             }
             titulo={r.nombre}
-            subtitulo={textoBonificadores(r.bonificadorFijo)}
+            subtitulo={es2024 ? "Sin bonificador (lo da el trasfondo)" : textoBonificadores(r.bonificadorFijo)}
           >
             <span className="text-xs text-muted-foreground">
               Velocidad {r.velocidad} pies · Idiomas: {r.idiomas.join(", ")}
@@ -46,7 +55,9 @@ export function PasoRaza({
 
       {raza && (
         <div className="rounded-lg border border-border bg-card p-3 text-sm">
-          <h4 className="mb-1 font-medium">Rasgos de {raza.nombre}</h4>
+          <h4 className="mb-1 font-medium">
+            Rasgos de {raza.nombre} <span className="font-normal text-muted-foreground">({etiqueta})</span>
+          </h4>
           <ul className="list-inside list-disc text-muted-foreground">
             {raza.rasgos.map((rasgo) => (
               <li key={rasgo.nombre}>
@@ -57,7 +68,7 @@ export function PasoRaza({
         </div>
       )}
 
-      {raza?.eleccionLibre && (
+      {!es2024 && raza?.eleccionLibre && (
         <div className="rounded-lg border border-border bg-card p-3 text-sm">
           <h4 className="mb-2 font-medium">
             Elige {raza.eleccionLibre.cantidad} característica(s) que reciben +{raza.eleccionLibre.valor}

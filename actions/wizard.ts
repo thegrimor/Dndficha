@@ -32,11 +32,14 @@ export async function crearPersonajeDesdeWizard(datos: DatosWizard) {
     throw new Error("Faltan datos del wizard: raza, clase o trasfondo sin seleccionar.");
   }
 
-  const abilityScores = calcularPuntuacionesFinales(
+  const abilityScores = calcularPuntuacionesFinales({
+    edicion: datos.edicion,
     raza,
-    datos.puntuacionesBase,
-    datos.eleccionesCaracteristicaRaza
-  );
+    trasfondo,
+    puntuacionesBase: datos.puntuacionesBase,
+    eleccionesCaracteristicaRaza: datos.eleccionesCaracteristicaRaza,
+    bonificadorTrasfondo: datos.bonificadorTrasfondo,
+  });
 
   const { skills, savingThrows, languages, proficiencies } = agregarCompetencias({
     raza,

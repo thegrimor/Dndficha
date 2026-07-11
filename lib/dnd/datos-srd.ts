@@ -15,8 +15,13 @@ export interface RazaSrd {
   id: string;
   nombre: string;
   velocidad: number;
+  /**
+   * Bonificador de característica de la raza. Solo se aplica en edición 2014:
+   * en 2024 el bonificador lo da el trasfondo (ver `TrasfondoSrd.bonificadorCaracteristicas`)
+   * y estas mismas especies no otorgan ninguno (ver `calcularPuntuacionesFinales`).
+   */
   bonificadorFijo: Partial<Record<Caracteristica, number>>;
-  /** Bonificadores de característica a elección libre (ej. semielfo: +1 a dos, excluyendo cha). */
+  /** Bonificadores de característica a elección libre (ej. semielfo: +1 a dos, excluyendo cha). Solo 2014. */
   eleccionLibre?: { cantidad: number; valor: number; excluir?: Caracteristica[] };
   idiomas: string[];
   competenciasHabilidad?: string[];
@@ -44,6 +49,12 @@ export interface TrasfondoSrd {
   numIdiomasElegibles: number;
   competenciasHerramientas: string[];
   rasgo: RasgoSrd;
+  /**
+   * Las tres características asociadas al trasfondo en la edición 2024 (PHB 2024,
+   * tabla de bonificadores por trasfondo). Solo se usa cuando `edicion === "2024"`:
+   * el jugador reparte +2/+1 entre dos de ellas, o +1 a las tres.
+   */
+  bonificadorCaracteristicas?: Caracteristica[];
 }
 
 export const IDIOMAS_DISPONIBLES = [
@@ -373,6 +384,7 @@ export const TRASFONDOS_SRD: TrasfondoSrd[] = [
     competenciasHabilidad: ["insight", "religion"],
     numIdiomasElegibles: 2,
     competenciasHerramientas: [],
+    bonificadorCaracteristicas: ["int", "wis", "cha"],
     rasgo: {
       nombre: "Refugio de los fieles",
       descripcion: "Puedes obtener ayuda y refugio de seguidores de tu fe.",
@@ -384,6 +396,7 @@ export const TRASFONDOS_SRD: TrasfondoSrd[] = [
     competenciasHabilidad: ["deception", "stealth"],
     numIdiomasElegibles: 0,
     competenciasHerramientas: ["un juego de herramientas de juego", "herramientas de ladrón"],
+    bonificadorCaracteristicas: ["dex", "con", "int"],
     rasgo: {
       nombre: "Contacto criminal",
       descripcion: "Tienes un contacto fiable en el submundo del crimen.",
@@ -395,6 +408,7 @@ export const TRASFONDOS_SRD: TrasfondoSrd[] = [
     competenciasHabilidad: ["athletics", "survival"],
     numIdiomasElegibles: 1,
     competenciasHerramientas: [],
+    bonificadorCaracteristicas: ["dex", "con", "wis"],
     rasgo: {
       nombre: "Vagabundo",
       descripcion: "Recuerdas la geografía de la región y encuentras comida y agua para el grupo.",
@@ -406,6 +420,7 @@ export const TRASFONDOS_SRD: TrasfondoSrd[] = [
     competenciasHabilidad: ["athletics", "intimidation"],
     numIdiomasElegibles: 0,
     competenciasHerramientas: ["un juego de herramientas de juego", "vehículos terrestres"],
+    bonificadorCaracteristicas: ["str", "dex", "con"],
     rasgo: {
       nombre: "Rango militar",
       descripcion: "Tu rango militar es reconocido por soldados de bandos afines.",
@@ -417,6 +432,7 @@ export const TRASFONDOS_SRD: TrasfondoSrd[] = [
     competenciasHabilidad: ["arcana", "history"],
     numIdiomasElegibles: 2,
     competenciasHerramientas: [],
+    bonificadorCaracteristicas: ["con", "int", "wis"],
     rasgo: {
       nombre: "Investigador",
       descripcion: "Sabes dónde y de quién obtener información que desconoces.",

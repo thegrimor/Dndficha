@@ -18,11 +18,17 @@ import { PasoTrasfondo } from "@/components/wizard/paso-trasfondo";
 import { PasoPuntuaciones } from "@/components/wizard/paso-puntuaciones";
 import { PasoResumen } from "@/components/wizard/paso-resumen";
 
-const PASOS = ["Edición", "Raza", "Clase", "Trasfondo", "Puntuaciones", "Resumen"] as const;
-
 export function WizardContainer() {
   const [paso, setPaso] = useState(0);
   const [datos, setDatos] = useState(datosWizardIniciales());
+  const pasos = [
+    "Edición",
+    datos.edicion === "2024" ? "Especie" : "Raza",
+    "Clase",
+    "Trasfondo",
+    "Puntuaciones",
+    "Resumen",
+  ] as const;
   const [error, setError] = useState<string | null>(null);
   const [pendiente, iniciarTransicion] = useTransition();
 
@@ -49,7 +55,7 @@ export function WizardContainer() {
       <CardHeader>
         <CardTitle>Nuevo personaje</CardTitle>
         <div className="flex flex-wrap gap-2 pt-1">
-          {PASOS.map((nombrePaso, indice) => (
+          {pasos.map((nombrePaso, indice) => (
             <span
               key={nombrePaso}
               className={cn(
@@ -98,11 +104,11 @@ export function WizardContainer() {
           >
             Anterior
           </Button>
-          {paso < PASOS.length - 1 ? (
+          {paso < pasos.length - 1 ? (
             <Button
               type="button"
               disabled={!puedeAvanzar}
-              onClick={() => setPaso((p) => Math.min(PASOS.length - 1, p + 1))}
+              onClick={() => setPaso((p) => Math.min(pasos.length - 1, p + 1))}
             >
               Siguiente
             </Button>
@@ -126,7 +132,11 @@ function calcularPuedeAvanzar(paso: number, datos: ReturnType<typeof datosWizard
     if (!datos.nombre.trim() || !datos.razaId) return false;
     const raza = RAZAS_SRD.find((r) => r.id === datos.razaId);
     if (!raza) return false;
-    if (raza.eleccionLibre && datos.eleccionesCaracteristicaRaza.length !== raza.eleccionLibre.cantidad) {
+    if (
+      datos.edicion === "2014" &&
+      raza.eleccionLibre &&
+      datos.eleccionesCaracteristicaRaza.length !== raza.eleccionLibre.cantidad
+    ) {
       return false;
     }
     return true;
@@ -141,7 +151,12 @@ function calcularPuedeAvanzar(paso: number, datos: ReturnType<typeof datosWizard
   if (paso === 3) {
     const trasfondo = TRASFONDOS_SRD.find((t) => t.id === datos.trasfondoId);
     if (!trasfondo) return false;
-    return datos.idiomasTrasfondoElegidos.length === trasfondo.numIdiomasElegibles;
+    if (datos.idiomasTrasfondoElegidos.length !== trasfondo.numIdiomasElegibles) return false;
+    if (datos.edicion === "2024" && trasfondo.bonificadorCaracteristicas && datos.bonificadorTrasfondo.modo === "reparto") {
+      const { mas2, mas1 } = datos.bonificadorTrasfondo;
+      if (!mas2 || !mas1 || mas2 === mas1) return false;
+    }
+    return true;
   }
 
   if (paso === 4) {

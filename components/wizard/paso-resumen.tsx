@@ -16,7 +16,14 @@ export function PasoResumen({ datos }: { datos: DatosWizard }) {
     return <p className="text-sm text-muted-foreground">Completa los pasos anteriores para ver el resumen.</p>;
   }
 
-  const puntuaciones = calcularPuntuacionesFinales(raza, datos.puntuacionesBase, datos.eleccionesCaracteristicaRaza);
+  const puntuaciones = calcularPuntuacionesFinales({
+    edicion: datos.edicion,
+    raza,
+    trasfondo,
+    puntuacionesBase: datos.puntuacionesBase,
+    eleccionesCaracteristicaRaza: datos.eleccionesCaracteristicaRaza,
+    bonificadorTrasfondo: datos.bonificadorTrasfondo,
+  });
   const { skills, savingThrows, languages, proficiencies } = agregarCompetencias({
     raza,
     clase,

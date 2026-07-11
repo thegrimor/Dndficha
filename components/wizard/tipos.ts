@@ -1,4 +1,5 @@
 import type { Caracteristica } from "@/lib/dnd/constantes";
+import type { BonificadorTrasfondoElegido } from "@/lib/dnd/competencias";
 import type { EdicionDnD } from "@/lib/open5e/ediciones";
 
 export type MetodoPuntuaciones = "array" | "manual";
@@ -17,6 +18,8 @@ export interface DatosWizard {
   habilidadesClaseElegidas: string[];
   /** Idiomas elegidos por el trasfondo (además de los fijos de la raza). */
   idiomasTrasfondoElegidos: string[];
+  /** Solo relevante en edición 2024: reparto del bonificador de característica del trasfondo. */
+  bonificadorTrasfondo: BonificadorTrasfondoElegido;
   metodoPuntuaciones: MetodoPuntuaciones;
   /** Puntuaciones base (previas al bonificador racial), una por característica. */
   puntuacionesBase: Record<Caracteristica, number>;
@@ -34,6 +37,7 @@ export function datosWizardIniciales(): DatosWizard {
     eleccionesCaracteristicaRaza: [],
     habilidadesClaseElegidas: [],
     idiomasTrasfondoElegidos: [],
+    bonificadorTrasfondo: { modo: "reparto", mas2: null, mas1: null },
     metodoPuntuaciones: "array",
     puntuacionesBase: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 },
   };
