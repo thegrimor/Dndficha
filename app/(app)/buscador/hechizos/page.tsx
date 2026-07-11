@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { BuscadorHechizos } from "@/components/buscador/buscador-hechizos";
 
 export default function BuscadorHechizosPage() {
@@ -9,7 +11,9 @@ export default function BuscadorHechizosPage() {
           Explora el catálogo SRD y añade hechizos directamente a una de tus fichas.
         </p>
       </div>
-      <BuscadorHechizos />
+      <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando...</p>}>
+        <BuscadorHechizos />
+      </Suspense>
     </div>
   );
 }

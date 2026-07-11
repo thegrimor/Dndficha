@@ -9,9 +9,10 @@ import {
 
 interface TarjetaObjetoProps {
   objeto: Open5eObjetoMagico;
+  personajeIdForzado?: string;
 }
 
-export function TarjetaObjeto({ objeto }: TarjetaObjetoProps) {
+export function TarjetaObjeto({ objeto, personajeIdForzado }: TarjetaObjetoProps) {
   const rareza = nombreRarezaObjeto(objeto);
   const sintonizacion = detalleSintonizacion(objeto);
 
@@ -34,7 +35,7 @@ export function TarjetaObjeto({ objeto }: TarjetaObjetoProps) {
         )}
         {objeto.desc && <p className="line-clamp-5">{objeto.desc}</p>}
         <div className="mt-auto pt-2">
-          <BotonAnadirAFicha tipo="objeto" item={objeto} />
+          <BotonAnadirAFicha tipo="objeto" item={objeto} personajeIdForzado={personajeIdForzado} />
         </div>
       </CardContent>
     </Card>

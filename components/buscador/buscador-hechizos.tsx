@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
+import { obtenerPersonaje } from "@/actions/personajes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TarjetaHechizo } from "@/components/buscador/tarjeta-hechizo";
@@ -34,7 +36,22 @@ async function obtenerCatalogoHechizos(edicion: EdicionDnD): Promise<Open5eHechi
 }
 
 export function BuscadorHechizos() {
-  const [edicion, setEdicion] = useState<EdicionDnD>("2014");
+  // Si venimos desde la ficha de un personaje (`?personaje=<id>`), la
+  // edición y el destino de "Añadir a ficha" quedan fijados por esa ficha:
+  // no hay que volver a elegirlos.
+  const searchParams = useSearchParams();
+  const personajeId = searchParams.get("personaje");
+
+  const { data: personaje } = useQuery({
+    queryKey: ["personaje-para-buscador", personajeId],
+    queryFn: () => obtenerPersonaje(personajeId as string),
+    enabled: Boolean(personajeId),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const [edicionManual, setEdicionManual] = useState<EdicionDnD>("2014");
+  const edicion = personajeId ? personaje?.sheet.edicion : edicionManual;
+
   const [texto, setTexto] = useState("");
   const [nivel, setNivel] = useState("");
   const [escuela, setEscuela] = useState("");
@@ -43,7 +60,8 @@ export function BuscadorHechizos() {
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["open5e", "spells", "completo", edicion],
-    queryFn: () => obtenerCatalogoHechizos(edicion),
+    queryFn: () => obtenerCatalogoHechizos(edicion as EdicionDnD),
+    enabled: Boolean(edicion),
     staleTime: 60 * 60 * 1000,
     retry: 0,
   });
@@ -80,18 +98,26 @@ export function BuscadorHechizos() {
 
   return (
     <div className="flex flex-col gap-6">
+      {personajeId && (
+        <p className="text-sm text-muted-foreground">
+          Añadiendo hechizos a <span className="font-medium text-foreground">{personaje?.name ?? "…"}</span> ·{" "}
+          {EDICIONES_DND.find((e) => e.value === edicion)?.label ?? "Cargando edición..."}
+        </p>
+      )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <select
-          value={edicion}
-          onChange={(evento) => setEdicion(evento.target.value as EdicionDnD)}
-          className="h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {EDICIONES_DND.map((opcion) => (
-            <option key={opcion.value} value={opcion.value}>
-              {opcion.label}
-            </option>
-          ))}
-        </select>
+        {!personajeId && (
+          <select
+            value={edicionManual}
+            onChange={(evento) => setEdicionManual(evento.target.value as EdicionDnD)}
+            className="h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {EDICIONES_DND.map((opcion) => (
+              <option key={opcion.value} value={opcion.value}>
+                {opcion.label}
+              </option>
+            ))}
+          </select>
+        )}
         <Input
           placeholder="Buscar hechizo por nombre..."
           value={texto}
@@ -132,7 +158,11 @@ export function BuscadorHechizos() {
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {resultados.map((hechizo) => (
-              <TarjetaHechizo key={identificadorOpen5e(hechizo)} hechizo={hechizo} />
+              <TarjetaHechizo
+                key={identificadorOpen5e(hechizo)}
+                hechizo={hechizo}
+                personajeIdForzado={personajeId ?? undefined}
+              />
             ))}
           </div>
           {hayMas && (

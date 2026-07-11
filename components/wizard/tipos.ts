@@ -1,9 +1,12 @@
 import type { Caracteristica } from "@/lib/dnd/constantes";
+import type { EdicionDnD } from "@/lib/open5e/ediciones";
 
 export type MetodoPuntuaciones = "array" | "manual";
 
 /** Estado acumulado por el wizard a través de sus pasos. */
 export interface DatosWizard {
+  /** Edición de reglas (2014 o 2024/"5.5"); se fija una vez y queda en el personaje. */
+  edicion: EdicionDnD;
   nombre: string;
   razaId: string | null;
   claseId: string | null;
@@ -23,6 +26,7 @@ export const ARRAY_ESTANDAR = [15, 14, 13, 12, 10, 8] as const;
 
 export function datosWizardIniciales(): DatosWizard {
   return {
+    edicion: "2014",
     nombre: "",
     razaId: null,
     claseId: null,

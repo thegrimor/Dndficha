@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { BuscadorObjetos } from "@/components/buscador/buscador-objetos";
 
 export default function BuscadorObjetosPage() {
@@ -9,7 +11,9 @@ export default function BuscadorObjetosPage() {
           Explora los objetos mágicos del SRD y añádelos al inventario de una de tus fichas.
         </p>
       </div>
-      <BuscadorObjetos />
+      <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando...</p>}>
+        <BuscadorObjetos />
+      </Suspense>
     </div>
   );
 }

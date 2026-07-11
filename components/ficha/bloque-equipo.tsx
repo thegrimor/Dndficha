@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { actualizarPersonaje } from "@/actions/personajes";
 import { ControlesEdicion } from "@/components/ficha/controles-edicion";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { FichaPersonaje, Personaje } from "@/types/personaje";
@@ -67,16 +68,24 @@ export function BloqueEquipo({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between">
+      <CardHeader className="flex-row items-center justify-between gap-2">
         <CardTitle>Equipo</CardTitle>
         {!soloLectura && (
-          <ControlesEdicion
-            editando={editando}
-            guardando={guardando}
-            onEditar={() => setEditando(true)}
-            onCancelar={cancelar}
-            onGuardar={guardar}
-          />
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/buscador/objetos?personaje=${personaje.id}`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Buscar en el SRD
+            </Link>
+            <ControlesEdicion
+              editando={editando}
+              guardando={guardando}
+              onEditar={() => setEditando(true)}
+              onCancelar={cancelar}
+              onGuardar={guardar}
+            />
+          </div>
         )}
       </CardHeader>
       <CardContent>

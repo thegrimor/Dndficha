@@ -11,13 +11,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ARRAY_ESTANDAR, datosWizardIniciales } from "@/components/wizard/tipos";
+import { PasoEdicion } from "@/components/wizard/paso-edicion";
 import { PasoRaza } from "@/components/wizard/paso-raza";
 import { PasoClase } from "@/components/wizard/paso-clase";
 import { PasoTrasfondo } from "@/components/wizard/paso-trasfondo";
 import { PasoPuntuaciones } from "@/components/wizard/paso-puntuaciones";
 import { PasoResumen } from "@/components/wizard/paso-resumen";
 
-const PASOS = ["Raza", "Clase", "Trasfondo", "Puntuaciones", "Resumen"] as const;
+const PASOS = ["Edición", "Raza", "Clase", "Trasfondo", "Puntuaciones", "Resumen"] as const;
 
 export function WizardContainer() {
   const [paso, setPaso] = useState(0);
@@ -79,11 +80,12 @@ export function WizardContainer() {
           />
         </div>
 
-        {paso === 0 && <PasoRaza datos={datos} actualizar={actualizar} />}
-        {paso === 1 && <PasoClase datos={datos} actualizar={actualizar} />}
-        {paso === 2 && <PasoTrasfondo datos={datos} actualizar={actualizar} />}
-        {paso === 3 && <PasoPuntuaciones datos={datos} actualizar={actualizar} />}
-        {paso === 4 && <PasoResumen datos={datos} />}
+        {paso === 0 && <PasoEdicion datos={datos} actualizar={actualizar} />}
+        {paso === 1 && <PasoRaza datos={datos} actualizar={actualizar} />}
+        {paso === 2 && <PasoClase datos={datos} actualizar={actualizar} />}
+        {paso === 3 && <PasoTrasfondo datos={datos} actualizar={actualizar} />}
+        {paso === 4 && <PasoPuntuaciones datos={datos} actualizar={actualizar} />}
+        {paso === 5 && <PasoResumen datos={datos} />}
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -117,6 +119,10 @@ export function WizardContainer() {
 
 function calcularPuedeAvanzar(paso: number, datos: ReturnType<typeof datosWizardIniciales>): boolean {
   if (paso === 0) {
+    return Boolean(datos.edicion);
+  }
+
+  if (paso === 1) {
     if (!datos.nombre.trim() || !datos.razaId) return false;
     const raza = RAZAS_SRD.find((r) => r.id === datos.razaId);
     if (!raza) return false;
@@ -126,19 +132,19 @@ function calcularPuedeAvanzar(paso: number, datos: ReturnType<typeof datosWizard
     return true;
   }
 
-  if (paso === 1) {
+  if (paso === 2) {
     const clase = CLASES_SRD.find((c) => c.id === datos.claseId);
     if (!clase) return false;
     return datos.habilidadesClaseElegidas.length === clase.numHabilidadesElegibles;
   }
 
-  if (paso === 2) {
+  if (paso === 3) {
     const trasfondo = TRASFONDOS_SRD.find((t) => t.id === datos.trasfondoId);
     if (!trasfondo) return false;
     return datos.idiomasTrasfondoElegidos.length === trasfondo.numIdiomasElegibles;
   }
 
-  if (paso === 3) {
+  if (paso === 4) {
     const valores = CARACTERISTICAS.map((c) => datos.puntuacionesBase[c]);
     if (datos.metodoPuntuaciones === "array") {
       const arrayValido = (ARRAY_ESTANDAR as readonly number[]).slice().sort().join(",");

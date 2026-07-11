@@ -9,9 +9,10 @@ import {
 
 interface TarjetaHechizoProps {
   hechizo: Open5eHechizo;
+  personajeIdForzado?: string;
 }
 
-export function TarjetaHechizo({ hechizo }: TarjetaHechizoProps) {
+export function TarjetaHechizo({ hechizo, personajeIdForzado }: TarjetaHechizoProps) {
   const clases = clasesHechizo(hechizo);
   const alcance = hechizo.range_text ?? hechizo.range;
 
@@ -47,7 +48,7 @@ export function TarjetaHechizo({ hechizo }: TarjetaHechizoProps) {
           </p>
         )}
         <div className="mt-auto pt-2">
-          <BotonAnadirAFicha tipo="hechizo" item={hechizo} />
+          <BotonAnadirAFicha tipo="hechizo" item={hechizo} personajeIdForzado={personajeIdForzado} />
         </div>
       </CardContent>
     </Card>

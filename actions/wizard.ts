@@ -47,6 +47,7 @@ export async function crearPersonajeDesdeWizard(datos: DatosWizard) {
   });
 
   const ficha = fichaVacia();
+  ficha.edicion = datos.edicion;
   ficha.abilityScores = abilityScores;
   ficha.savingThrows = savingThrows;
   ficha.skills = skills;

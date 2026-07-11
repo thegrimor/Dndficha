@@ -19,18 +19,27 @@ type Estado =
 interface BotonAnadirAFichaProps {
   tipo: "hechizo" | "objeto";
   item: Open5eHechizo | Open5eObjetoMagico;
+  /** Si se conoce de antemano a qué ficha añadir (ej. se entró desde esa
+   * ficha), se guarda directo sin preguntar ni listar todas las fichas. */
+  personajeIdForzado?: string;
 }
 
 /**
- * Botón "Añadir a ficha" para tarjetas del buscador SRD. Si el usuario tiene
- * más de un personaje le deja elegir con un <select>; si tiene solo uno,
- * añade directamente; si no tiene ninguno, avisa.
+ * Botón "Añadir a ficha" para tarjetas del buscador SRD. Si ya se sabe a
+ * qué personaje añadir (personajeIdForzado), guarda directo. Si no, y el
+ * usuario tiene más de un personaje, le deja elegir con un <select>; si
+ * tiene solo uno, añade directamente; si no tiene ninguno, avisa.
  */
-export function BotonAnadirAFicha({ tipo, item }: BotonAnadirAFichaProps) {
+export function BotonAnadirAFicha({ tipo, item, personajeIdForzado }: BotonAnadirAFichaProps) {
   const [estado, setEstado] = useState<Estado>({ fase: "inicial" });
   const [fichaSeleccionada, setFichaSeleccionada] = useState<string>("");
 
   async function manejarClickInicial() {
+    if (personajeIdForzado) {
+      await guardar(personajeIdForzado);
+      return;
+    }
+
     setEstado({ fase: "cargando-fichas" });
     try {
       const fichas = await listarPersonajes();

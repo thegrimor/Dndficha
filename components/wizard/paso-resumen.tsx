@@ -4,6 +4,7 @@ import { claseArmadura, iniciativa, modificadorConSigno, puntosGolpeIniciales } 
 import { agregarCompetencias, calcularPuntuacionesFinales } from "@/lib/dnd/competencias";
 import { CARACTERISTICAS, HABILIDADES, NOMBRES_CARACTERISTICAS } from "@/lib/dnd/constantes";
 import { CLASES_SRD, RAZAS_SRD, TRASFONDOS_SRD } from "@/lib/dnd/datos-srd";
+import { EDICIONES_DND } from "@/lib/open5e/ediciones";
 import type { DatosWizard } from "@/components/wizard/tipos";
 
 export function PasoResumen({ datos }: { datos: DatosWizard }) {
@@ -30,7 +31,8 @@ export function PasoResumen({ datos }: { datos: DatosWizard }) {
       <div className="rounded-lg border border-border bg-card p-3">
         <h3 className="text-base font-semibold">{datos.nombre || "Sin nombre"}</h3>
         <p className="text-muted-foreground">
-          {raza.nombre} · {clase.nombre} · {trasfondo.nombre} · Nivel 1
+          {raza.nombre} · {clase.nombre} · {trasfondo.nombre} · Nivel 1 ·{" "}
+          {EDICIONES_DND.find((e) => e.value === datos.edicion)?.label}
         </p>
       </div>
 

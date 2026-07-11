@@ -1,6 +1,9 @@
 import type { Caracteristica } from "@/lib/dnd/constantes";
+import type { EdicionDnD } from "@/lib/open5e/ediciones";
 
 export interface FichaPersonaje {
+  /** Edición de reglas del personaje (2014 o 2024/"5.5"); se fija al crearlo. */
+  edicion: EdicionDnD;
   abilityScores: Record<Caracteristica, number>;
   savingThrows: Partial<Record<Caracteristica, { proficient: boolean }>>;
   skills: Record<string, { proficient: boolean; expertise?: boolean }>;
@@ -54,6 +57,7 @@ export interface Personaje {
 
 export function fichaVacia(): FichaPersonaje {
   return {
+    edicion: "2014",
     abilityScores: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
     savingThrows: {},
     skills: {},

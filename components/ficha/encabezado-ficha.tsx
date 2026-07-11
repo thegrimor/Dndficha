@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { actualizarPersonaje } from "@/actions/personajes";
 import { ControlesEdicion } from "@/components/ficha/controles-edicion";
 import { Input } from "@/components/ui/input";
+import { EDICIONES_DND } from "@/lib/open5e/ediciones";
 import type { Personaje } from "@/types/personaje";
 
 interface DatosEncabezado {
@@ -65,7 +66,12 @@ export function EncabezadoFicha({
     return (
       <div className="flex flex-col gap-2 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold">{personaje.name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-3xl font-bold">{personaje.name}</h1>
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+              {EDICIONES_DND.find((e) => e.value === personaje.sheet.edicion)?.label ?? "D&D 5e (2014)"}
+            </span>
+          </div>
           <p className="text-muted-foreground">
             {personaje.race ?? "Raza sin definir"} · {personaje.class ?? "Clase sin definir"} ·
             Nivel {personaje.level}
