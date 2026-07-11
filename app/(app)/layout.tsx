@@ -1,12 +1,15 @@
 import Link from "next/link";
 
 import { cerrarSesion } from "@/actions/auth";
+import { listarPersonajes } from "@/actions/personajes";
 import { Button } from "@/components/ui/button";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { PersonajeActivoProvider } from "@/components/providers/personaje-activo-provider";
 import { SelectorPersonajeActivo } from "@/components/nav/selector-personaje-activo";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const personajes = await listarPersonajes();
+
   return (
     <QueryProvider>
       <PersonajeActivoProvider>
@@ -16,7 +19,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Link href="/personajes" className="font-semibold">
                 Dndficha
               </Link>
-              <SelectorPersonajeActivo />
+              <SelectorPersonajeActivo personajes={personajes} />
             </div>
             <nav className="flex items-center gap-4 text-sm">
               <Link href="/personajes" className="hover:underline">

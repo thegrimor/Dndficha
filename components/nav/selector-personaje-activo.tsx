@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 
-import { listarPersonajes } from "@/actions/personajes";
 import { usePersonajeActivo } from "@/components/providers/personaje-activo-provider";
+import type { Personaje } from "@/types/personaje";
+
+interface SelectorPersonajeActivoProps {
+  personajes: Pick<Personaje, "id" | "name" | "level">[];
+}
 
 /**
  * Selector de "personaje activo" en la cabecera de la app: vive fuera de
@@ -12,18 +15,16 @@ import { usePersonajeActivo } from "@/components/providers/personaje-activo-prov
  * personaje elegido se mantiene (persistido en localStorage) y el buscador
  * de hechizos/objetos lo usa automáticamente sin tener que volver a
  * "Mis personajes" cada vez.
+ *
+ * Recibe la lista de personajes ya cargada desde el layout (server
+ * component): así no hace falta volver a pedirla desde el cliente en cada
+ * página, lo que evita llamar a una Server Action protegida fuera de una
+ * acción de usuario.
  */
-export function SelectorPersonajeActivo() {
+export function SelectorPersonajeActivo({ personajes }: SelectorPersonajeActivoProps) {
   const { personajeActivoId, setPersonajeActivoId } = usePersonajeActivo();
 
-  const { data: personajes, isLoading } = useQuery({
-    queryKey: ["personajes-para-selector"],
-    queryFn: listarPersonajes,
-    staleTime: 60 * 1000,
-  });
-
-  if (isLoading) return null;
-  if (!personajes || personajes.length === 0) return null;
+  if (personajes.length === 0) return null;
 
   const activo = personajes.find((p) => p.id === personajeActivoId);
 
