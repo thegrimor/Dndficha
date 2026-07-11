@@ -30,6 +30,28 @@ const ACOLITO_2024: Open5eTrasfondo = {
   ],
 };
 
+/** Trasfondo real de srd-2014 (Acolyte), tal como lo confirmó Open5e v2 en vivo: sin ability_score ni feat, con rasgo propio. */
+const ACOLITO_2014: Open5eTrasfondo = {
+  key: "srd_acolyte",
+  name: "Acolyte",
+  desc: "You have spent your life in the service of a temple...",
+  benefits: [
+    {
+      name: "Equipment",
+      desc: "A holy symbol..., a prayer book or prayer wheel, 5 sticks of incense, vestments, a set of common clothes, and a pouch containing 15 gp",
+      type: "equipment",
+    },
+    { name: "Languages", desc: "Two of your choice", type: "language" },
+    {
+      name: "Shelter of the Faithful",
+      desc: "As an acolyte, you command the respect of those who share your faith...",
+      type: "feature",
+    },
+    { name: "Skill Proficiencies", desc: "Insight, Religion", type: "skill_proficiency" },
+    { name: "Suggested Characteristics", desc: "Acolytes are shaped by...", type: "suggested_characteristics" },
+  ],
+};
+
 describe("idsHabilidadDesdeTexto", () => {
   it("reconoce una lista separada por comas", () => {
     expect(idsHabilidadDesdeTexto("Insight, Religion")).toEqual(["insight", "religion"]);
@@ -61,12 +83,8 @@ describe("habilidadesTrasfondo / herramientas / idiomas (esquema real benefits[]
     expect(idiomasElegiblesTrasfondo(ACOLITO_2024)).toBe(0);
   });
 
-  it("reconoce un beneficio de idiomas si existiera (ej. SRD 2014)", () => {
-    const bg: Open5eTrasfondo = {
-      name: "Acolyte 2014",
-      benefits: [{ name: "Languages", desc: "Two of your choice", type: "language" }],
-    };
-    expect(idiomasElegiblesTrasfondo(bg)).toBe(2);
+  it("lee el beneficio de idiomas de un trasfondo real 2014", () => {
+    expect(idiomasElegiblesTrasfondo(ACOLITO_2014)).toBe(2);
   });
 
   it("no rompe si faltan benefits", () => {
@@ -78,12 +96,12 @@ describe("habilidadesTrasfondo / herramientas / idiomas (esquema real benefits[]
 });
 
 describe("nombreDoteTrasfondo", () => {
-  it("lee la dote de origen del beneficio type: feat", () => {
+  it("lee la dote de origen del beneficio type: feat (solo existe en 2024)", () => {
     expect(nombreDoteTrasfondo(ACOLITO_2024)).toBe("Magic Initiate (Cleric)");
   });
 
-  it("undefined si no hay beneficio de dote", () => {
-    expect(nombreDoteTrasfondo({ name: "Misterioso" })).toBeUndefined();
+  it("undefined si no hay beneficio de dote (2014 no otorga dote de origen)", () => {
+    expect(nombreDoteTrasfondo(ACOLITO_2014)).toBeUndefined();
   });
 });
 
@@ -92,8 +110,8 @@ describe("caracteristicasBonificadorTrasfondo", () => {
     expect(caracteristicasBonificadorTrasfondo(ACOLITO_2024)).toEqual(["int", "wis", "cha"]);
   });
 
-  it("undefined si no hay beneficio de ability_score o no se reconocen exactamente 3", () => {
-    expect(caracteristicasBonificadorTrasfondo({ name: "Misterioso" })).toBeUndefined();
+  it("undefined si no hay beneficio de ability_score (2014 no da bonificador por trasfondo)", () => {
+    expect(caracteristicasBonificadorTrasfondo(ACOLITO_2014)).toBeUndefined();
   });
 });
 
@@ -101,5 +119,10 @@ describe("nombreRasgoTrasfondo / descripcionRasgoTrasfondo", () => {
   it("el SRD 2024 no tiene rasgo propio: nombre es el del trasfondo, descripción es el equipo", () => {
     expect(nombreRasgoTrasfondo(ACOLITO_2024)).toBe("Acolyte");
     expect(descripcionRasgoTrasfondo(ACOLITO_2024)).toContain("Calligrapher's Supplies");
+  });
+
+  it("el SRD 2014 sí tiene rasgo propio: se usa su nombre y descripción reales", () => {
+    expect(nombreRasgoTrasfondo(ACOLITO_2014)).toBe("Shelter of the Faithful");
+    expect(descripcionRasgoTrasfondo(ACOLITO_2014)).toContain("you command the respect");
   });
 });

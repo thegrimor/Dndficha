@@ -139,8 +139,8 @@ export function PasoTrasfondo({
 
       {trasfondo && trasfondo.rasgo.descripcion && (
         <div className="rounded-lg border border-border bg-card p-3 text-sm">
-          <h4 className="mb-1 font-medium">Equipo inicial</h4>
-          <p className="text-muted-foreground">{trasfondo.rasgo.descripcion}</p>
+          <h4 className="mb-1 font-medium">{trasfondo.rasgo.nombre}</h4>
+          <p className="whitespace-pre-line text-muted-foreground">{trasfondo.rasgo.descripcion}</p>
         </div>
       )}
 

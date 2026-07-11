@@ -109,13 +109,24 @@ function beneficiosPorTipo(bg: Open5eTrasfondo, tipo: string): Open5eBeneficioTr
   return (bg.benefits ?? []).filter((beneficio) => beneficio.type === tipo);
 }
 
-/** Nombre a mostrar para el trasfondo (siempre `name`, no hay un "rasgo" separado en el SRD 2024). */
+/**
+ * Nombre del rasgo propio del trasfondo (beneficio `type: "feature"`, ej.
+ * "Shelter of the Faithful" en el SRD 2014). El SRD 2024 no tiene rasgo
+ * propio (confirmado en vivo: sin beneficio de ese tipo), así que ahí cae
+ * al nombre del trasfondo.
+ */
 export function nombreRasgoTrasfondo(bg: Open5eTrasfondo): string {
-  return bg.name;
+  return beneficiosPorTipo(bg, "feature")[0]?.name?.trim() || bg.name;
 }
 
-/** Equipo inicial del trasfondo (beneficio `type: "equipment"`), como texto libre. */
+/**
+ * Descripción a mostrar bajo el rasgo: la del rasgo propio si existe (SRD
+ * 2014), si no el equipo inicial (lo único parecido a un "rasgo" que trae
+ * el SRD 2024 dentro del propio trasfondo).
+ */
 export function descripcionRasgoTrasfondo(bg: Open5eTrasfondo): string {
+  const feature = beneficiosPorTipo(bg, "feature")[0]?.desc?.trim();
+  if (feature) return feature;
   const equipo = beneficiosPorTipo(bg, "equipment")[0]?.desc?.trim();
   return equipo ?? bg.desc?.trim() ?? "";
 }
