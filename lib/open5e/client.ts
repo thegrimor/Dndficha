@@ -16,9 +16,15 @@ export async function fetchOpen5e<T>(
 
   try {
     return await intentarFetch<T>(url);
-  } catch {
+  } catch (error) {
+    console.error(`[open5e] primer intento falló para ${url}:`, error);
     // Reintento único antes de rendirse.
-    return await intentarFetch<T>(url);
+    try {
+      return await intentarFetch<T>(url);
+    } catch (error2) {
+      console.error(`[open5e] reintento también falló para ${url}:`, error2);
+      throw error2;
+    }
   }
 }
 

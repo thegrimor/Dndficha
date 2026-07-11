@@ -33,7 +33,8 @@ export function crearRouteHandlerOpen5e(
           "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
         },
       });
-    } catch {
+    } catch (error) {
+      console.error(`[open5e] GET /api/open5e/${recurso} falló:`, error);
       return NextResponse.json({ error: "open5e_unavailable" }, { status: 503 });
     }
   };
