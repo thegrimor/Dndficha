@@ -8,6 +8,7 @@ import { obtenerPersonaje } from "@/actions/personajes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TarjetaObjeto } from "@/components/buscador/tarjeta-objeto";
+import { usePersonajeActivo } from "@/components/providers/personaje-activo-provider";
 import {
   CargandoCatalogoOpen5e,
   ErrorCatalogoOpen5e,
@@ -42,10 +43,12 @@ async function obtenerCatalogoObjetos(edicion: EdicionDnD): Promise<Open5eObjeto
 
 export function BuscadorObjetos() {
   // Si venimos desde la ficha de un personaje (`?personaje=<id>`), la
-  // edición y el destino de "Añadir a ficha" quedan fijados por esa ficha:
-  // no hay que volver a elegirlos.
+  // edición y el destino de "Añadir a ficha" quedan fijados por esa ficha.
+  // Si no, usamos el personaje activo (elegido en la cabecera) para no
+  // tener que pasar siempre por la ficha primero.
   const searchParams = useSearchParams();
-  const personajeId = searchParams.get("personaje");
+  const { personajeActivoId } = usePersonajeActivo();
+  const personajeId = searchParams.get("personaje") ?? personajeActivoId ?? undefined;
 
   const { data: personaje } = useQuery({
     queryKey: ["personaje-para-buscador", personajeId],
@@ -166,7 +169,7 @@ export function BuscadorObjetos() {
               <TarjetaObjeto
                 key={identificadorOpen5e(objeto)}
                 objeto={objeto}
-                personajeIdForzado={personajeId ?? undefined}
+                personajeIdForzado={personajeId}
               />
             ))}
           </div>

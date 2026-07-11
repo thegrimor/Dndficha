@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { obtenerPersonaje } from "@/actions/personajes";
 import { CompartirFicha } from "@/components/ficha/compartir-ficha";
 import { FichaCompleta } from "@/components/ficha/ficha-completa";
+import { MarcarPersonajeActivo } from "@/components/ficha/marcar-personaje-activo";
 
 export default async function FichaPersonajePage({
   params,
@@ -16,6 +17,7 @@ export default async function FichaPersonajePage({
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <MarcarPersonajeActivo id={personaje.id} />
       <CompartirFicha personaje={personaje} />
       <FichaCompleta personaje={personaje} />
     </div>
