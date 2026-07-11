@@ -78,6 +78,147 @@ export interface Open5eMonstruo {
   [clave: string]: unknown;
 }
 
+/**
+ * Trasfondo tal como lo devuelve Open5e. El esquema real de v2 no se pudo
+ * verificar en vivo desde este entorno (red bloqueada, ver endpoints.ts),
+ * así que se aceptan tanto los nombres de campo "clásicos" de v1
+ * (con guion, ej. `skill-proficiencies`) como una variante con guion bajo,
+ * por si v2 los renombra. Todo opcional salvo `name`; hay que usar los
+ * helpers de más abajo (con fallback) en vez de leer los campos a pelo.
+ */
+export interface Open5eTrasfondo {
+  slug?: string;
+  key?: string;
+  name: string;
+  desc?: string;
+  "skill-proficiencies"?: string;
+  skill_proficiencies?: string;
+  "tool-proficiencies"?: string | null;
+  tool_proficiencies?: string | null;
+  languages?: string;
+  feature?: string;
+  "feature-desc"?: string;
+  feature_desc?: string;
+  document__title?: string;
+  document?: { key: string; display_name?: string; name?: string };
+  [clave: string]: unknown;
+}
+
+export interface Open5eDote {
+  slug?: string;
+  key?: string;
+  name: string;
+  desc?: string;
+  prerequisite?: string;
+  requirement?: string;
+  document__title?: string;
+  document?: { key: string; display_name?: string; name?: string };
+  [clave: string]: unknown;
+}
+
+/** Primer campo de texto no vacío entre varias claves candidatas de un objeto de Open5e. */
+function primerTexto(obj: Record<string, unknown>, claves: string[]): string | undefined {
+  for (const clave of claves) {
+    const valor = obj[clave];
+    if (typeof valor === "string" && valor.trim()) return valor.trim();
+  }
+  return undefined;
+}
+
+/** Descripción "de la dote" a mostrar: desc si existe, si no una cadena vacía. */
+export function descripcionDote(dote: Open5eDote): string {
+  return dote.desc?.trim() ?? "";
+}
+
+/** Nombre del rasgo que otorga el trasfondo (ej. "Shelter of the Faithful"), con fallback al nombre del trasfondo. */
+export function nombreRasgoTrasfondo(bg: Open5eTrasfondo): string {
+  return primerTexto(bg, ["feature"]) ?? bg.name;
+}
+
+/** Descripción del rasgo del trasfondo: usa feature-desc si existe, si no la descripción general. */
+export function descripcionRasgoTrasfondo(bg: Open5eTrasfondo): string {
+  return primerTexto(bg, ["feature-desc", "feature_desc"]) ?? bg.desc?.trim() ?? "";
+}
+
+const ID_HABILIDAD_POR_NOMBRE_INGLES: Record<string, string> = {
+  acrobatics: "acrobatics",
+  "animal handling": "animal_handling",
+  arcana: "arcana",
+  athletics: "athletics",
+  deception: "deception",
+  history: "history",
+  insight: "insight",
+  intimidation: "intimidation",
+  investigation: "investigation",
+  medicine: "medicine",
+  nature: "nature",
+  perception: "perception",
+  performance: "performance",
+  persuasion: "persuasion",
+  religion: "religion",
+  "sleight of hand": "sleight_of_hand",
+  stealth: "stealth",
+  survival: "survival",
+};
+
+/**
+ * Extrae ids de habilidad (mismos ids que HABILIDADES en lib/dnd/constantes)
+ * de un texto libre en inglés tipo "Insight, Religion" o "Insight and Religion".
+ * Los nombres que no se reconozcan se ignoran en vez de romper el wizard.
+ */
+export function idsHabilidadDesdeTexto(texto: string | undefined): string[] {
+  if (!texto) return [];
+  const partes = texto
+    .split(/,|\by\b|\band\b|\/|;/i)
+    .map((parte) => parte.trim().toLowerCase())
+    .filter(Boolean);
+
+  const ids: string[] = [];
+  for (const parte of partes) {
+    const id = ID_HABILIDAD_POR_NOMBRE_INGLES[parte];
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
+/** Competencias de habilidad del trasfondo, ya normalizadas a ids internos. */
+export function habilidadesTrasfondo(bg: Open5eTrasfondo): string[] {
+  return idsHabilidadDesdeTexto(primerTexto(bg, ["skill-proficiencies", "skill_proficiencies"]));
+}
+
+/** Competencias de herramienta del trasfondo, como texto libre (no hay taxonomía interna de herramientas). */
+export function herramientasTrasfondo(bg: Open5eTrasfondo): string[] {
+  const texto = primerTexto(bg, ["tool-proficiencies", "tool_proficiencies"]);
+  if (!texto || /^none$/i.test(texto)) return [];
+  return texto
+    .split(/,|\by\b|\band\b/i)
+    .map((parte) => parte.trim())
+    .filter(Boolean);
+}
+
+const NUMERO_POR_PALABRA: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+};
+
+/**
+ * Número de idiomas adicionales a elegir según el texto libre del trasfondo
+ * (ej. "Two of your choice"). Si no se puede interpretar, 0 (no bloquea el
+ * wizard, simplemente no ofrece elección de idioma para ese trasfondo).
+ */
+export function idiomasElegiblesTrasfondo(bg: Open5eTrasfondo): number {
+  const texto = bg.languages?.toLowerCase();
+  if (!texto) return 0;
+  const numeroDigito = texto.match(/\d+/);
+  if (numeroDigito) return Number(numeroDigito[0]);
+  for (const [palabra, valor] of Object.entries(NUMERO_POR_PALABRA)) {
+    if (texto.includes(palabra)) return valor;
+  }
+  return 0;
+}
+
 /** Identificador estable de un recurso de Open5e, sea v1 (`slug`) o v2 (`key`). */
 export function identificadorOpen5e(item: { slug?: string; key?: string; name: string }): string {
   return item.slug ?? item.key ?? item.name;

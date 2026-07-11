@@ -1,16 +1,50 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+
 import { HABILIDADES, NOMBRES_CARACTERISTICAS, type Caracteristica } from "@/lib/dnd/constantes";
-import { IDIOMAS_DISPONIBLES, RAZAS_SRD, TRASFONDOS_SRD } from "@/lib/dnd/datos-srd";
-import { DOTES_SRD } from "@/lib/dnd/dotes";
+import { IDIOMAS_DISPONIBLES, RAZAS_SRD } from "@/lib/dnd/datos-srd";
+import { trasfondoDesdeOpen5e } from "@/lib/dnd/trasfondos-open5e";
 import type { BonificadorTrasfondoElegido } from "@/lib/dnd/competencias";
+import { useDebounce } from "@/lib/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import {
+  CargandoCatalogoOpen5e,
+  ErrorCatalogoOpen5e,
+  SinResultadosOpen5e,
+} from "@/components/buscador/estado-open5e";
 import { OpcionTarjeta } from "@/components/wizard/opcion-tarjeta";
 import type { DatosWizard, DoteOrigenElegida } from "@/components/wizard/tipos";
+import {
+  descripcionDote,
+  identificadorOpen5e,
+  type Open5eDote,
+  type Open5eTrasfondo,
+} from "@/lib/open5e/types-recursos";
 
 const BONIFICADOR_INICIAL: BonificadorTrasfondoElegido = { modo: "reparto", mas2: null, mas1: null };
-const DOTE_INICIAL: DoteOrigenElegida = { modo: "catalogo", doteId: null, manualNombre: "", manualDescripcion: "" };
+const DOTE_INICIAL: DoteOrigenElegida = { modo: "catalogo", doteElegida: null, manualNombre: "", manualDescripcion: "" };
+const TIMEOUT_CLIENTE_MS = 15000;
+const LARGO_SUBTITULO = 140;
+
+function recortar(texto: string, largo: number): string {
+  return texto.length > largo ? `${texto.slice(0, largo).trim()}…` : texto;
+}
+
+async function obtenerCatalogoOpen5e<T>(recurso: "backgrounds" | "feats", edicion: string): Promise<T[]> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_CLIENTE_MS);
+  try {
+    const respuesta = await fetch(`/api/open5e/${recurso}?edicion=${edicion}`, { signal: controller.signal });
+    if (!respuesta.ok) throw new Error("open5e_unavailable");
+    const datos = (await respuesta.json()) as { results: T[] };
+    return datos.results;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 export function PasoTrasfondo({
   datos,
@@ -19,35 +53,99 @@ export function PasoTrasfondo({
   datos: DatosWizard;
   actualizar: (cambios: Partial<DatosWizard>) => void;
 }) {
-  const trasfondo = TRASFONDOS_SRD.find((t) => t.id === datos.trasfondoId);
+  const trasfondo = datos.trasfondoDatos;
   const raza = RAZAS_SRD.find((r) => r.id === datos.razaId);
   const idiomasYaConocidos = new Set(raza?.idiomas ?? []);
   const idiomasElegibles = IDIOMAS_DISPONIBLES.filter((idioma) => !idiomasYaConocidos.has(idioma));
   const es2024 = datos.edicion === "2024";
   const opcionesBonificador = trasfondo?.bonificadorCaracteristicas ?? [];
 
+  const [textoTrasfondo, setTextoTrasfondo] = useState("");
+  const textoTrasfondoDebounced = useDebounce(textoTrasfondo, 200);
+
+  const {
+    data: trasfondosOpen5e,
+    isLoading: cargandoTrasfondos,
+    isError: errorTrasfondos,
+    refetch: reintentarTrasfondos,
+  } = useQuery({
+    queryKey: ["open5e", "backgrounds", "completo", datos.edicion],
+    queryFn: () => obtenerCatalogoOpen5e<Open5eTrasfondo>("backgrounds", datos.edicion),
+    staleTime: 60 * 60 * 1000,
+    retry: 0,
+  });
+
+  const trasfondosFiltrados = useMemo(() => {
+    if (!trasfondosOpen5e) return [];
+    const texto = textoTrasfondoDebounced.trim().toLowerCase();
+    const lista = texto ? trasfondosOpen5e.filter((bg) => bg.name.toLowerCase().includes(texto)) : trasfondosOpen5e;
+    return lista.map((bg) => ({ bg, normalizado: trasfondoDesdeOpen5e(bg) }));
+  }, [trasfondosOpen5e, textoTrasfondoDebounced]);
+
+  const [textoDote, setTextoDote] = useState("");
+  const textoDoteDebounced = useDebounce(textoDote, 200);
+
+  const {
+    data: dotesOpen5e,
+    isLoading: cargandoDotes,
+    isError: errorDotes,
+    refetch: reintentarDotes,
+  } = useQuery({
+    queryKey: ["open5e", "feats", "completo", "2024"],
+    queryFn: () => obtenerCatalogoOpen5e<Open5eDote>("feats", "2024"),
+    enabled: es2024,
+    staleTime: 60 * 60 * 1000,
+    retry: 0,
+  });
+
+  const dotesFiltradas = useMemo(() => {
+    if (!dotesOpen5e) return [];
+    const texto = textoDoteDebounced.trim().toLowerCase();
+    return texto ? dotesOpen5e.filter((dote) => dote.name.toLowerCase().includes(texto)) : dotesOpen5e;
+  }, [dotesOpen5e, textoDoteDebounced]);
+
+  function elegirTrasfondo(bg: Open5eTrasfondo) {
+    actualizar({
+      trasfondoId: identificadorOpen5e(bg),
+      trasfondoDatos: trasfondoDesdeOpen5e(bg),
+      idiomasTrasfondoElegidos: [],
+      bonificadorTrasfondo: BONIFICADOR_INICIAL,
+      doteOrigen: DOTE_INICIAL,
+    });
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {TRASFONDOS_SRD.map((t) => (
-          <OpcionTarjeta
-            key={t.id}
-            seleccionada={t.id === datos.trasfondoId}
-            onClick={() =>
-              actualizar({
-                trasfondoId: t.id,
-                idiomasTrasfondoElegidos: [],
-                bonificadorTrasfondo: BONIFICADOR_INICIAL,
-                doteOrigen: DOTE_INICIAL,
-              })
-            }
-            titulo={t.nombre}
-            subtitulo={t.competenciasHabilidad
-              .map((id) => HABILIDADES.find((h) => h.id === id)?.nombre ?? id)
-              .join(", ")}
-          />
-        ))}
-      </div>
+      <Input
+        placeholder="Buscar trasfondo por nombre..."
+        value={textoTrasfondo}
+        onChange={(e) => setTextoTrasfondo(e.target.value)}
+        className="sm:max-w-xs"
+      />
+
+      {errorTrasfondos && <ErrorCatalogoOpen5e onReintentar={() => reintentarTrasfondos()} />}
+      {!errorTrasfondos && cargandoTrasfondos && <CargandoCatalogoOpen5e />}
+      {!errorTrasfondos && !cargandoTrasfondos && trasfondosFiltrados.length === 0 && <SinResultadosOpen5e />}
+
+      {!errorTrasfondos && trasfondosFiltrados.length > 0 && (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {trasfondosFiltrados.map(({ bg, normalizado }) => (
+            <OpcionTarjeta
+              key={identificadorOpen5e(bg)}
+              seleccionada={identificadorOpen5e(bg) === datos.trasfondoId}
+              onClick={() => elegirTrasfondo(bg)}
+              titulo={normalizado.nombre}
+              subtitulo={
+                normalizado.competenciasHabilidad.length > 0
+                  ? normalizado.competenciasHabilidad
+                      .map((id) => HABILIDADES.find((h) => h.id === id)?.nombre ?? id)
+                      .join(", ")
+                  : recortar(bg.desc ?? "", LARGO_SUBTITULO)
+              }
+            />
+          ))}
+        </div>
+      )}
 
       {trasfondo && (
         <div className="rounded-lg border border-border bg-card p-3 text-sm">
@@ -201,18 +299,38 @@ export function PasoTrasfondo({
           </div>
 
           {datos.doteOrigen.modo === "catalogo" ? (
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {DOTES_SRD.map((dote) => (
-                <OpcionTarjeta
-                  key={dote.id}
-                  seleccionada={dote.id === datos.doteOrigen.doteId}
-                  onClick={() =>
-                    actualizar({ doteOrigen: { ...datos.doteOrigen, doteId: dote.id } })
-                  }
-                  titulo={dote.nombre}
-                  subtitulo={dote.descripcion}
-                />
-              ))}
+            <div className="flex flex-col gap-2">
+              <Input
+                placeholder="Buscar dote por nombre..."
+                value={textoDote}
+                onChange={(e) => setTextoDote(e.target.value)}
+                className="sm:max-w-xs"
+              />
+
+              {errorDotes && <ErrorCatalogoOpen5e onReintentar={() => reintentarDotes()} />}
+              {!errorDotes && cargandoDotes && <CargandoCatalogoOpen5e />}
+              {!errorDotes && !cargandoDotes && dotesFiltradas.length === 0 && <SinResultadosOpen5e />}
+
+              {!errorDotes && dotesFiltradas.length > 0 && (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {dotesFiltradas.map((dote) => (
+                    <OpcionTarjeta
+                      key={identificadorOpen5e(dote)}
+                      seleccionada={dote.name === datos.doteOrigen.doteElegida?.nombre}
+                      onClick={() =>
+                        actualizar({
+                          doteOrigen: {
+                            ...datos.doteOrigen,
+                            doteElegida: { nombre: dote.name, descripcion: descripcionDote(dote) },
+                          },
+                        })
+                      }
+                      titulo={dote.name}
+                      subtitulo={recortar(descripcionDote(dote), LARGO_SUBTITULO)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-2">

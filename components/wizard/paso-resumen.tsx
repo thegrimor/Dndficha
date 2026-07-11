@@ -3,15 +3,14 @@
 import { claseArmadura, iniciativa, modificadorConSigno, puntosGolpeIniciales } from "@/lib/dnd/calculos";
 import { agregarCompetencias, calcularPuntuacionesFinales } from "@/lib/dnd/competencias";
 import { CARACTERISTICAS, HABILIDADES, NOMBRES_CARACTERISTICAS } from "@/lib/dnd/constantes";
-import { CLASES_SRD, RAZAS_SRD, TRASFONDOS_SRD } from "@/lib/dnd/datos-srd";
-import { resolverDoteOrigen } from "@/lib/dnd/dotes";
+import { CLASES_SRD, RAZAS_SRD } from "@/lib/dnd/datos-srd";
 import { EDICIONES_DND } from "@/lib/open5e/ediciones";
-import type { DatosWizard } from "@/components/wizard/tipos";
+import { resolverDoteOrigen, type DatosWizard } from "@/components/wizard/tipos";
 
 export function PasoResumen({ datos }: { datos: DatosWizard }) {
   const raza = RAZAS_SRD.find((r) => r.id === datos.razaId);
   const clase = CLASES_SRD.find((c) => c.id === datos.claseId);
-  const trasfondo = TRASFONDOS_SRD.find((t) => t.id === datos.trasfondoId);
+  const trasfondo = datos.trasfondoDatos;
 
   if (!raza || !clase || !trasfondo) {
     return <p className="text-sm text-muted-foreground">Completa los pasos anteriores para ver el resumen.</p>;
