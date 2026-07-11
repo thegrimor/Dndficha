@@ -4,6 +4,7 @@ import { actualizarPersonaje, obtenerPersonaje } from "@/actions/personajes";
 import {
   identificadorOpen5e,
   nivelHechizo,
+  nombreCategoriaObjeto,
   type Open5eHechizo,
   type Open5eObjetoMagico,
 } from "@/lib/open5e/types-recursos";
@@ -71,7 +72,8 @@ export async function agregarObjetoAFicha(
     return { ok: false, error: "No se encontró esa ficha." };
   }
 
-  const yaEstaba = personaje.sheet.inventory.some((item) => item.slug === objeto.slug);
+  const idObjeto = identificadorOpen5e(objeto);
+  const yaEstaba = personaje.sheet.inventory.some((item) => item.slug === idObjeto);
   if (yaEstaba) {
     return { ok: false, error: "Ese objeto ya está en la ficha." };
   }
@@ -81,9 +83,9 @@ export async function agregarObjetoAFicha(
     inventory: [
       ...personaje.sheet.inventory,
       {
-        slug: objeto.slug,
+        slug: idObjeto,
         nombre: objeto.name,
-        tipo: objeto.type ?? "Objeto mágico",
+        tipo: nombreCategoriaObjeto(objeto),
         fuente: "open5e" as const,
         datos: objeto,
       },

@@ -12,26 +12,18 @@ import {
   SinResultadosOpen5e,
 } from "@/components/buscador/estado-open5e";
 import { useDebounce } from "@/lib/hooks/use-debounce";
-import type { Open5eObjetoMagico } from "@/lib/open5e/types-recursos";
+import { EDICIONES_DND, type EdicionDnD } from "@/lib/open5e/ediciones";
+import {
+  claveCategoriaObjeto,
+  identificadorOpen5e,
+  nombreCategoriaObjeto,
+  type Open5eObjetoMagico,
+} from "@/lib/open5e/types-recursos";
 
 const TAMANO_LOTE_VISIBLE = 24;
 
-// Tipos de objeto mágico más comunes del SRD; Open5e no expone un endpoint
-// de "choices" así que se mantiene esta lista fija como filtro rápido.
-const TIPOS_OBJETO = [
-  { value: "Wondrous item", label: "Objeto maravilloso" },
-  { value: "Weapon", label: "Arma" },
-  { value: "Armor", label: "Armadura" },
-  { value: "Potion", label: "Poción" },
-  { value: "Ring", label: "Anillo" },
-  { value: "Rod", label: "Vara" },
-  { value: "Scroll", label: "Pergamino" },
-  { value: "Staff", label: "Bastón" },
-  { value: "Wand", label: "Varita" },
-];
-
-async function obtenerCatalogoObjetos(): Promise<Open5eObjetoMagico[]> {
-  const respuesta = await fetch("/api/open5e/magicitems");
+async function obtenerCatalogoObjetos(edicion: EdicionDnD): Promise<Open5eObjetoMagico[]> {
+  const respuesta = await fetch(`/api/open5e/magicitems?edicion=${edicion}`);
   if (!respuesta.ok) {
     throw new Error("open5e_unavailable");
   }
@@ -40,20 +32,36 @@ async function obtenerCatalogoObjetos(): Promise<Open5eObjetoMagico[]> {
 }
 
 export function BuscadorObjetos() {
+  const [edicion, setEdicion] = useState<EdicionDnD>("2014");
   const [texto, setTexto] = useState("");
-  const [tipo, setTipo] = useState("");
+  const [categoria, setCategoria] = useState("");
   const [visibles, setVisibles] = useState(TAMANO_LOTE_VISIBLE);
   const textoDebounced = useDebounce(texto, 200);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["open5e", "magicitems", "completo"],
-    queryFn: obtenerCatalogoObjetos,
+    queryKey: ["open5e", "magicitems", "completo", edicion],
+    queryFn: () => obtenerCatalogoObjetos(edicion),
     staleTime: 60 * 60 * 1000,
     retry: 0,
   });
 
-  // Catálogo completo traído una sola vez; el filtrado es en cliente porque
-  // Open5e no siempre respeta los parámetros de búsqueda/tipo.
+  // Las categorías del filtro salen de los datos ya cargados (no de una
+  // lista adivinada a mano), porque los valores exactos de "category" solo
+  // se conocen viendo la respuesta real de Open5e.
+  const categorias = useMemo(() => {
+    if (!data) return [];
+    const vistas = new Map<string, string>();
+    for (const objeto of data) {
+      const clave = claveCategoriaObjeto(objeto);
+      if (clave && !vistas.has(clave)) vistas.set(clave, nombreCategoriaObjeto(objeto));
+    }
+    return Array.from(vistas, ([value, label]) => ({ value, label })).sort((a, b) =>
+      a.label.localeCompare(b.label)
+    );
+  }, [data]);
+
+  // Catálogo completo traído una sola vez por edición; el filtrado es en
+  // cliente porque Open5e no siempre respeta los parámetros de búsqueda/tipo.
   const filtrados = useMemo(() => {
     if (!data) return [];
     const textoNormalizado = textoDebounced.trim().toLowerCase();
@@ -62,15 +70,15 @@ export function BuscadorObjetos() {
       if (textoNormalizado && !objeto.name.toLowerCase().includes(textoNormalizado)) {
         return false;
       }
-      if (tipo && objeto.type?.toLowerCase() !== tipo.toLowerCase()) return false;
+      if (categoria && claveCategoriaObjeto(objeto) !== categoria) return false;
       return true;
     });
-  }, [data, textoDebounced, tipo]);
+  }, [data, textoDebounced, categoria]);
 
   // Reinicia el lote visible cuando cambian los filtros (patrón "ajustar
   // estado durante el render" en vez de un efecto, para no disparar un
   // render extra en cascada).
-  const filtroActual = `${textoDebounced}|${tipo}`;
+  const filtroActual = `${edicion}|${textoDebounced}|${categoria}`;
   const [filtroAnterior, setFiltroAnterior] = useState(filtroActual);
   if (filtroActual !== filtroAnterior) {
     setFiltroAnterior(filtroActual);
@@ -83,6 +91,17 @@ export function BuscadorObjetos() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <select
+          value={edicion}
+          onChange={(evento) => setEdicion(evento.target.value as EdicionDnD)}
+          className="h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {EDICIONES_DND.map((opcion) => (
+            <option key={opcion.value} value={opcion.value}>
+              {opcion.label}
+            </option>
+          ))}
+        </select>
         <Input
           placeholder="Buscar objeto por nombre..."
           value={texto}
@@ -90,12 +109,12 @@ export function BuscadorObjetos() {
           className="sm:max-w-xs"
         />
         <select
-          value={tipo}
-          onChange={(evento) => setTipo(evento.target.value)}
+          value={categoria}
+          onChange={(evento) => setCategoria(evento.target.value)}
           className="h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <option value="">Todos los tipos</option>
-          {TIPOS_OBJETO.map((opcion) => (
+          <option value="">Todas las categorías</option>
+          {categorias.map((opcion) => (
             <option key={opcion.value} value={opcion.value}>
               {opcion.label}
             </option>
@@ -111,7 +130,7 @@ export function BuscadorObjetos() {
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {resultados.map((objeto) => (
-              <TarjetaObjeto key={objeto.slug} objeto={objeto} />
+              <TarjetaObjeto key={identificadorOpen5e(objeto)} objeto={objeto} />
             ))}
           </div>
           {hayMas && (

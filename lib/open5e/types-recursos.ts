@@ -31,13 +31,22 @@ export interface Open5eHechizo {
 }
 
 export interface Open5eObjetoMagico {
-  slug: string;
+  /** v1 usa `slug`, v2 usa `key`; ver identificadorOpen5e(). */
+  slug?: string;
+  key?: string;
   name: string;
+  /** v1 lo da como string plano ("Wondrous item"). */
   type?: string;
-  rarity?: string;
+  /** v2 lo da como objeto {name, key} (ej. {name:"Armor", key:"armor"}). */
+  category?: string | { name: string; key: string };
+  /** v1: string plano. v2: objeto {name, key, rank}. */
+  rarity?: string | { name: string; key: string; rank?: number };
   desc?: string;
-  requires_attunement?: string;
+  /** v1: string descriptivo. v2: boolean, con el detalle aparte en attunement_detail. */
+  requires_attunement?: string | boolean;
+  attunement_detail?: string | null;
   document__title?: string;
+  document?: { key: string; display_name?: string; name?: string };
   [clave: string]: unknown;
 }
 
@@ -133,3 +142,37 @@ export const NIVELES_HECHIZO: Array<{ value: string; label: string }> = [
   { value: "0", label: "Truco" },
   ...Array.from({ length: 9 }, (_, i) => ({ value: String(i + 1), label: `Nivel ${i + 1}` })),
 ];
+
+/** Clave normalizada de la categoría de un objeto (v2 `category`, o v1 `type` como fallback). */
+export function claveCategoriaObjeto(objeto: Open5eObjetoMagico): string | undefined {
+  if (objeto.category) {
+    const clave = typeof objeto.category === "string" ? objeto.category : objeto.category.key;
+    return clave?.toLowerCase();
+  }
+  return objeto.type?.toLowerCase();
+}
+
+/** Nombre legible de la categoría de un objeto. */
+export function nombreCategoriaObjeto(objeto: Open5eObjetoMagico): string {
+  if (objeto.category) {
+    return typeof objeto.category === "string" ? objeto.category : objeto.category.name;
+  }
+  return objeto.type ?? "Objeto mágico";
+}
+
+/** Nombre legible de la rareza de un objeto, sea v1 (string) o v2 ({name, key, rank}). */
+export function nombreRarezaObjeto(objeto: Open5eObjetoMagico): string | undefined {
+  if (!objeto.rarity) return undefined;
+  return typeof objeto.rarity === "string" ? objeto.rarity : objeto.rarity.name;
+}
+
+/** Texto de sintonización a mostrar, si aplica, tolerando v1 (string) o v2 (boolean + detail). */
+export function detalleSintonizacion(objeto: Open5eObjetoMagico): string | undefined {
+  if (typeof objeto.requires_attunement === "string" && objeto.requires_attunement) {
+    return objeto.requires_attunement;
+  }
+  if (objeto.requires_attunement === true) {
+    return objeto.attunement_detail || "Requiere sintonización";
+  }
+  return undefined;
+}
