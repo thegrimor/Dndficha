@@ -8,6 +8,7 @@ import { obtenerPersonaje } from "@/actions/personajes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TarjetaHechizo } from "@/components/buscador/tarjeta-hechizo";
+import { usePersonajeActivo } from "@/components/providers/personaje-activo-provider";
 import {
   CargandoCatalogoOpen5e,
   ErrorCatalogoOpen5e,
@@ -44,10 +45,12 @@ async function obtenerCatalogoHechizos(edicion: EdicionDnD): Promise<Open5eHechi
 
 export function BuscadorHechizos() {
   // Si venimos desde la ficha de un personaje (`?personaje=<id>`), la
-  // edición y el destino de "Añadir a ficha" quedan fijados por esa ficha:
-  // no hay que volver a elegirlos.
+  // edición y el destino de "Añadir a ficha" quedan fijados por esa ficha.
+  // Si no, usamos el personaje activo (elegido en la cabecera) para no
+  // tener que pasar siempre por la ficha primero.
   const searchParams = useSearchParams();
-  const personajeId = searchParams.get("personaje");
+  const { personajeActivoId } = usePersonajeActivo();
+  const personajeId = searchParams.get("personaje") ?? personajeActivoId ?? undefined;
 
   const { data: personaje } = useQuery({
     queryKey: ["personaje-para-buscador", personajeId],
@@ -59,9 +62,21 @@ export function BuscadorHechizos() {
   const [edicionManual, setEdicionManual] = useState<EdicionDnD>("2014");
   const edicion = personajeId ? personaje?.sheet.edicion : edicionManual;
 
+  // Nivel máximo de hechizo que el personaje puede lanzar según sus huecos
+  // de conjuro (si el personaje activo no tiene definidos, no hay tope).
+  const nivelMaximoPersonaje = useMemo(() => {
+    const slots = personaje?.sheet.spells.slots;
+    if (!slots) return undefined;
+    const nivelesConHueco = Object.entries(slots)
+      .filter(([, hueco]) => hueco.total > 0)
+      .map(([nivel]) => Number(nivel));
+    return nivelesConHueco.length > 0 ? Math.max(...nivelesConHueco) : undefined;
+  }, [personaje]);
+
   const [texto, setTexto] = useState("");
   const [nivel, setNivel] = useState("");
   const [escuela, setEscuela] = useState("");
+  const [soloLanzables, setSoloLanzables] = useState(true);
   const [visibles, setVisibles] = useState(TAMANO_LOTE_VISIBLE);
   const textoDebounced = useDebounce(texto, 200);
 
@@ -76,6 +91,8 @@ export function BuscadorHechizos() {
   // El catálogo completo se trae una sola vez por edición; el filtrado es
   // 100% en cliente porque Open5e no siempre respeta los parámetros de
   // búsqueda/nivel/escuela.
+  const aplicarTopeNivel = soloLanzables && nivelMaximoPersonaje !== undefined;
+
   const filtrados = useMemo(() => {
     if (!data) return [];
     const textoNormalizado = textoDebounced.trim().toLowerCase();
@@ -86,14 +103,15 @@ export function BuscadorHechizos() {
       }
       if (nivel !== "" && nivelHechizo(hechizo) !== Number(nivel)) return false;
       if (escuela && claveEscuela(hechizo.school) !== escuela) return false;
+      if (aplicarTopeNivel && nivelHechizo(hechizo) > (nivelMaximoPersonaje as number)) return false;
       return true;
     });
-  }, [data, textoDebounced, nivel, escuela]);
+  }, [data, textoDebounced, nivel, escuela, aplicarTopeNivel, nivelMaximoPersonaje]);
 
   // Reinicia el lote visible cuando cambian los filtros (patrón "ajustar
   // estado durante el render" en vez de un efecto, para no disparar un
   // render extra en cascada).
-  const filtroActual = `${edicion}|${textoDebounced}|${nivel}|${escuela}`;
+  const filtroActual = `${edicion}|${textoDebounced}|${nivel}|${escuela}|${aplicarTopeNivel}`;
   const [filtroAnterior, setFiltroAnterior] = useState(filtroActual);
   if (filtroActual !== filtroAnterior) {
     setFiltroAnterior(filtroActual);
@@ -155,6 +173,17 @@ export function BuscadorHechizos() {
             </option>
           ))}
         </select>
+        {nivelMaximoPersonaje !== undefined && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={soloLanzables}
+              onChange={(evento) => setSoloLanzables(evento.target.checked)}
+              className="h-4 w-4 rounded border-border"
+            />
+            Solo los que {personaje?.name ?? "el personaje"} puede lanzar (hasta nivel {nivelMaximoPersonaje})
+          </label>
+        )}
       </div>
 
       {isError && <ErrorCatalogoOpen5e onReintentar={() => refetch()} />}
@@ -168,7 +197,7 @@ export function BuscadorHechizos() {
               <TarjetaHechizo
                 key={identificadorOpen5e(hechizo)}
                 hechizo={hechizo}
-                personajeIdForzado={personajeId ?? undefined}
+                personajeIdForzado={personajeId}
               />
             ))}
           </div>
