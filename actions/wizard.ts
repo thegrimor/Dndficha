@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 
 import { agregarCompetencias, calcularPuntuacionesFinales } from "@/lib/dnd/competencias";
 import { puntosGolpeIniciales, iniciativa, claseArmadura } from "@/lib/dnd/calculos";
-import { CLASES_SRD, RAZAS_SRD, TRASFONDOS_SRD } from "@/lib/dnd/datos-srd";
+import { CLASES_SRD, RAZAS_SRD } from "@/lib/dnd/datos-srd";
 import { createClient } from "@/lib/supabase/server";
-import type { DatosWizard } from "@/components/wizard/tipos";
+import { resolverDoteOrigen, type DatosWizard } from "@/components/wizard/tipos";
 import { fichaVacia } from "@/types/personaje";
 
 async function usuarioActualOFalla() {
@@ -26,7 +26,7 @@ export async function crearPersonajeDesdeWizard(datos: DatosWizard) {
 
   const raza = RAZAS_SRD.find((r) => r.id === datos.razaId);
   const clase = CLASES_SRD.find((c) => c.id === datos.claseId);
-  const trasfondo = TRASFONDOS_SRD.find((t) => t.id === datos.trasfondoId);
+  const trasfondo = datos.trasfondoDatos;
 
   if (!raza || !clase || !trasfondo) {
     throw new Error("Faltan datos del wizard: raza, clase o trasfondo sin seleccionar.");
@@ -56,7 +56,8 @@ export async function crearPersonajeDesdeWizard(datos: DatosWizard) {
   ficha.skills = skills;
   ficha.languages = languages;
   ficha.proficiencies = proficiencies;
-  ficha.features = [...raza.rasgos, ...clase.rasgosNivel1, trasfondo.rasgo];
+  const doteOrigen = datos.edicion === "2024" ? resolverDoteOrigen(datos.doteOrigen) : null;
+  ficha.features = [...raza.rasgos, ...clase.rasgosNivel1, trasfondo.rasgo, ...(doteOrigen ? [doteOrigen] : [])];
 
   const pgMax = Math.max(1, puntosGolpeIniciales(clase.dadoGolpe, abilityScores.con));
   ficha.combat = {

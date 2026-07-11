@@ -1,3 +1,3 @@
-import { crearRouteHandlerOpen5e } from "@/lib/open5e/crear-route-handler";
+import { crearRouteHandlerOpen5eV2CompletoPorEdicion } from "@/lib/open5e/crear-route-handler";
 
-export const GET = crearRouteHandlerOpen5e("backgrounds");
+export const GET = crearRouteHandlerOpen5eV2CompletoPorEdicion("backgrounds");

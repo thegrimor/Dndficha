@@ -5,7 +5,7 @@ import { unstable_rethrow } from "next/navigation";
 
 import { crearPersonajeDesdeWizard } from "@/actions/wizard";
 import { CARACTERISTICAS } from "@/lib/dnd/constantes";
-import { CLASES_SRD, RAZAS_SRD, TRASFONDOS_SRD } from "@/lib/dnd/datos-srd";
+import { CLASES_SRD, RAZAS_SRD } from "@/lib/dnd/datos-srd";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -149,12 +149,17 @@ function calcularPuedeAvanzar(paso: number, datos: ReturnType<typeof datosWizard
   }
 
   if (paso === 3) {
-    const trasfondo = TRASFONDOS_SRD.find((t) => t.id === datos.trasfondoId);
+    const trasfondo = datos.trasfondoDatos;
     if (!trasfondo) return false;
     if (datos.idiomasTrasfondoElegidos.length !== trasfondo.numIdiomasElegibles) return false;
     if (datos.edicion === "2024" && trasfondo.bonificadorCaracteristicas && datos.bonificadorTrasfondo.modo === "reparto") {
       const { mas2, mas1 } = datos.bonificadorTrasfondo;
       if (!mas2 || !mas1 || mas2 === mas1) return false;
+    }
+    if (datos.edicion === "2024") {
+      const { modo, doteElegida, manualNombre, manualDescripcion } = datos.doteOrigen;
+      if (modo === "catalogo" && !doteElegida) return false;
+      if (modo === "manual" && (!manualNombre.trim() || !manualDescripcion.trim())) return false;
     }
     return true;
   }

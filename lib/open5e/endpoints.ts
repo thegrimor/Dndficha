@@ -6,10 +6,18 @@
  * https://api.open5e.com/v1/spells/). Se mantiene v1 para los recursos que
  * no necesitan distinguir edición (weapons/armor/races/classes/etc.).
  *
- * Para hechizos y objetos mágicos se usa v2 (ver OPEN5E_V2_*), porque v2 es
- * la única versión que separa el contenido de la SRD 2014 y la SRD 2024
- * ("5.5"/One D&D) por documento (`document__key=srd-2014` vs `srd-2024`,
- * confirmado en producción). v1 solo tiene la SRD 2014.
+ * Para hechizos, objetos mágicos y trasfondos se usa v2 (ver OPEN5E_V2_*),
+ * porque v2 es la única versión que separa el contenido de la SRD 2014 y la
+ * SRD 2024 ("5.5"/One D&D) por documento (`document__key=srd-2014` vs
+ * `srd-2024`, confirmado en producción). v1 solo tiene la SRD 2014, así que
+ * no sirve para el bonificador de característica del trasfondo en 2024.
+ *
+ * `feats` se quedó en v1 a propósito: se comprobó en vivo que el recurso de
+ * dotes de Open5e (v1 y v2) está dominado por contenido de terceros (A5E,
+ * Tome of Heroes) y solo tiene UNA dote SRD oficial en toda la base de
+ * datos, así que no sirve como catálogo de dotes de origen 2024 (ver
+ * lib/dnd/dotes.ts, que usa un catálogo local en su lugar). La ruta se deja
+ * tal cual por si en el futuro se necesita para otra cosa.
  */
 
 export const OPEN5E_BASE_URL = "https://api.open5e.com/v1/";
@@ -46,6 +54,7 @@ export const OPEN5E_V2_BASE_URL = "https://api.open5e.com/v2/";
 export const OPEN5E_V2_RECURSOS = {
   spells: "spells/",
   magicitems: "magicitems/",
+  backgrounds: "backgrounds/",
 } as const;
 
 export type RecursoOpen5eV2 = keyof typeof OPEN5E_V2_RECURSOS;
