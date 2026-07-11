@@ -28,6 +28,32 @@ export async function fetchOpen5e<T>(
   }
 }
 
+const TAMANO_PAGINA_AGREGADO = 100;
+const MAX_PAGINAS_AGREGADO = 30;
+
+/**
+ * Trae TODAS las páginas de un recurso y las combina en un solo array.
+ *
+ * Se usa en vez de dejar que el cliente mande `search`/`level`/`school`/etc.
+ * a Open5e, porque esos filtros no siempre se aplican del lado de Open5e
+ * (parece ignorar parámetros que no reconoce y devolver todo sin filtrar).
+ * Es más confiable traer el catálogo completo una vez (se cachea 1h) y
+ * filtrar en el cliente.
+ */
+export async function fetchOpen5eCompleto<T>(recurso: RecursoOpen5e): Promise<T[]> {
+  const resultados: T[] = [];
+  let offset = 0;
+
+  for (let pagina = 0; pagina < MAX_PAGINAS_AGREGADO; pagina++) {
+    const datos = await fetchOpen5e<T>(recurso, { limit: TAMANO_PAGINA_AGREGADO, offset });
+    resultados.push(...datos.results);
+    if (!datos.next) break;
+    offset += TAMANO_PAGINA_AGREGADO;
+  }
+
+  return resultados;
+}
+
 async function intentarFetch<T>(url: string): Promise<RespuestaPaginadaOpen5e<T>> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,8 @@ import {
 } from "@/components/buscador/estado-open5e";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import type { Open5eObjetoMagico } from "@/lib/open5e/types-recursos";
-import type { RespuestaPaginadaOpen5e } from "@/lib/open5e/types";
 
-const LIMITE_POR_PAGINA = 20;
+const TAMANO_LOTE_VISIBLE = 24;
 
 // Tipos de objeto mágico más comunes del SRD; Open5e no expone un endpoint
 // de "choices" así que se mantiene esta lista fija como filtro rápido.
@@ -31,49 +30,55 @@ const TIPOS_OBJETO = [
   { value: "Wand", label: "Varita" },
 ];
 
-async function buscarObjetos(
-  texto: string,
-  tipo: string,
-  offset: number
-): Promise<RespuestaPaginadaOpen5e<Open5eObjetoMagico>> {
-  const params = new URLSearchParams();
-  if (texto) params.set("search", texto);
-  if (tipo) params.set("type", tipo);
-  params.set("limit", String(LIMITE_POR_PAGINA));
-  params.set("offset", String(offset));
-
-  const respuesta = await fetch(`/api/open5e/magicitems?${params.toString()}`);
+async function obtenerCatalogoObjetos(): Promise<Open5eObjetoMagico[]> {
+  const respuesta = await fetch("/api/open5e/magicitems");
   if (!respuesta.ok) {
     throw new Error("open5e_unavailable");
   }
-  return (await respuesta.json()) as RespuestaPaginadaOpen5e<Open5eObjetoMagico>;
+  const datos = (await respuesta.json()) as { results: Open5eObjetoMagico[] };
+  return datos.results;
 }
 
 export function BuscadorObjetos() {
   const [texto, setTexto] = useState("");
   const [tipo, setTipo] = useState("");
-  const textoDebounced = useDebounce(texto, 350);
+  const [visibles, setVisibles] = useState(TAMANO_LOTE_VISIBLE);
+  const textoDebounced = useDebounce(texto, 200);
 
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ["open5e", "magicitems", textoDebounced, tipo],
-    queryFn: ({ pageParam }) => buscarObjetos(textoDebounced, tipo, pageParam),
-    initialPageParam: 0,
-    getNextPageParam: (ultimaPagina, todasLasPaginas) => {
-      if (!ultimaPagina.next) return undefined;
-      return todasLasPaginas.reduce((total, pagina) => total + pagina.results.length, 0);
-    },
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["open5e", "magicitems", "completo"],
+    queryFn: obtenerCatalogoObjetos,
+    staleTime: 60 * 60 * 1000,
     retry: 0,
   });
 
-  const resultados = data?.pages.flatMap((pagina) => pagina.results) ?? [];
+  // Catálogo completo traído una sola vez; el filtrado es en cliente porque
+  // Open5e no siempre respeta los parámetros de búsqueda/tipo.
+  const filtrados = useMemo(() => {
+    if (!data) return [];
+    const textoNormalizado = textoDebounced.trim().toLowerCase();
+
+    return data.filter((objeto) => {
+      if (textoNormalizado && !objeto.name.toLowerCase().includes(textoNormalizado)) {
+        return false;
+      }
+      if (tipo && objeto.type?.toLowerCase() !== tipo.toLowerCase()) return false;
+      return true;
+    });
+  }, [data, textoDebounced, tipo]);
+
+  // Reinicia el lote visible cuando cambian los filtros (patrón "ajustar
+  // estado durante el render" en vez de un efecto, para no disparar un
+  // render extra en cascada).
+  const filtroActual = `${textoDebounced}|${tipo}`;
+  const [filtroAnterior, setFiltroAnterior] = useState(filtroActual);
+  if (filtroActual !== filtroAnterior) {
+    setFiltroAnterior(filtroActual);
+    setVisibles(TAMANO_LOTE_VISIBLE);
+  }
+
+  const resultados = filtrados.slice(0, visibles);
+  const hayMas = filtrados.length > visibles;
 
   return (
     <div className="flex flex-col gap-6">
@@ -100,7 +105,7 @@ export function BuscadorObjetos() {
 
       {isError && <ErrorCatalogoOpen5e onReintentar={() => refetch()} />}
       {!isError && isLoading && <CargandoCatalogoOpen5e />}
-      {!isError && !isLoading && resultados.length === 0 && <SinResultadosOpen5e />}
+      {!isError && !isLoading && filtrados.length === 0 && <SinResultadosOpen5e />}
 
       {!isError && resultados.length > 0 && (
         <>
@@ -109,14 +114,13 @@ export function BuscadorObjetos() {
               <TarjetaObjeto key={objeto.slug} objeto={objeto} />
             ))}
           </div>
-          {hasNextPage && (
+          {hayMas && (
             <div className="flex justify-center">
               <Button
                 variant="outline"
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
+                onClick={() => setVisibles((v) => v + TAMANO_LOTE_VISIBLE)}
               >
-                {isFetchingNextPage ? "Cargando..." : "Cargar más"}
+                Cargar más
               </Button>
             </div>
           )}

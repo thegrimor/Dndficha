@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,57 +12,61 @@ import {
   SinResultadosOpen5e,
 } from "@/components/buscador/estado-open5e";
 import { useDebounce } from "@/lib/hooks/use-debounce";
-import { ESCUELAS_HECHIZO, NIVELES_HECHIZO, type Open5eHechizo } from "@/lib/open5e/types-recursos";
-import type { RespuestaPaginadaOpen5e } from "@/lib/open5e/types";
+import { ESCUELAS_HECHIZO, NIVELES_HECHIZO, nivelHechizo, type Open5eHechizo } from "@/lib/open5e/types-recursos";
 
-const LIMITE_POR_PAGINA = 20;
+const TAMANO_LOTE_VISIBLE = 24;
 
-async function buscarHechizos(
-  texto: string,
-  nivel: string,
-  escuela: string,
-  offset: number
-): Promise<RespuestaPaginadaOpen5e<Open5eHechizo>> {
-  const params = new URLSearchParams();
-  if (texto) params.set("search", texto);
-  if (nivel) params.set("level", nivel);
-  if (escuela) params.set("school", escuela);
-  params.set("limit", String(LIMITE_POR_PAGINA));
-  params.set("offset", String(offset));
-
-  const respuesta = await fetch(`/api/open5e/spells?${params.toString()}`);
+async function obtenerCatalogoHechizos(): Promise<Open5eHechizo[]> {
+  const respuesta = await fetch("/api/open5e/spells");
   if (!respuesta.ok) {
     throw new Error("open5e_unavailable");
   }
-  return (await respuesta.json()) as RespuestaPaginadaOpen5e<Open5eHechizo>;
+  const datos = (await respuesta.json()) as { results: Open5eHechizo[] };
+  return datos.results;
 }
 
 export function BuscadorHechizos() {
   const [texto, setTexto] = useState("");
   const [nivel, setNivel] = useState("");
   const [escuela, setEscuela] = useState("");
-  const textoDebounced = useDebounce(texto, 350);
+  const [visibles, setVisibles] = useState(TAMANO_LOTE_VISIBLE);
+  const textoDebounced = useDebounce(texto, 200);
 
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ["open5e", "spells", textoDebounced, nivel, escuela],
-    queryFn: ({ pageParam }) => buscarHechizos(textoDebounced, nivel, escuela, pageParam),
-    initialPageParam: 0,
-    getNextPageParam: (ultimaPagina, todasLasPaginas) => {
-      if (!ultimaPagina.next) return undefined;
-      return todasLasPaginas.reduce((total, pagina) => total + pagina.results.length, 0);
-    },
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["open5e", "spells", "completo"],
+    queryFn: obtenerCatalogoHechizos,
+    staleTime: 60 * 60 * 1000,
     retry: 0,
   });
 
-  const resultados = data?.pages.flatMap((pagina) => pagina.results) ?? [];
+  // El catálogo completo se trae una sola vez; el filtrado es 100% en cliente
+  // porque Open5e no siempre respeta los parámetros de búsqueda/nivel/escuela.
+  const filtrados = useMemo(() => {
+    if (!data) return [];
+    const textoNormalizado = textoDebounced.trim().toLowerCase();
+
+    return data.filter((hechizo) => {
+      if (textoNormalizado && !hechizo.name.toLowerCase().includes(textoNormalizado)) {
+        return false;
+      }
+      if (nivel !== "" && nivelHechizo(hechizo) !== Number(nivel)) return false;
+      if (escuela && hechizo.school?.toLowerCase() !== escuela) return false;
+      return true;
+    });
+  }, [data, textoDebounced, nivel, escuela]);
+
+  // Reinicia el lote visible cuando cambian los filtros (patrón "ajustar
+  // estado durante el render" en vez de un efecto, para no disparar un
+  // render extra en cascada).
+  const filtroActual = `${textoDebounced}|${nivel}|${escuela}`;
+  const [filtroAnterior, setFiltroAnterior] = useState(filtroActual);
+  if (filtroActual !== filtroAnterior) {
+    setFiltroAnterior(filtroActual);
+    setVisibles(TAMANO_LOTE_VISIBLE);
+  }
+
+  const resultados = filtrados.slice(0, visibles);
+  const hayMas = filtrados.length > visibles;
 
   return (
     <div className="flex flex-col gap-6">
@@ -101,7 +105,7 @@ export function BuscadorHechizos() {
 
       {isError && <ErrorCatalogoOpen5e onReintentar={() => refetch()} />}
       {!isError && isLoading && <CargandoCatalogoOpen5e />}
-      {!isError && !isLoading && resultados.length === 0 && <SinResultadosOpen5e />}
+      {!isError && !isLoading && filtrados.length === 0 && <SinResultadosOpen5e />}
 
       {!isError && resultados.length > 0 && (
         <>
@@ -110,14 +114,13 @@ export function BuscadorHechizos() {
               <TarjetaHechizo key={hechizo.slug} hechizo={hechizo} />
             ))}
           </div>
-          {hasNextPage && (
+          {hayMas && (
             <div className="flex justify-center">
               <Button
                 variant="outline"
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
+                onClick={() => setVisibles((v) => v + TAMANO_LOTE_VISIBLE)}
               >
-                {isFetchingNextPage ? "Cargando..." : "Cargar más"}
+                Cargar más
               </Button>
             </div>
           )}
