@@ -1,6 +1,7 @@
 import { CARACTERISTICAS } from "@/lib/dnd/constantes";
 import type { TrasfondoSrd } from "@/lib/dnd/datos-srd";
 import {
+  caracteristicasBonificadorTrasfondo,
   descripcionRasgoTrasfondo,
   habilidadesTrasfondo,
   herramientasTrasfondo,
@@ -14,11 +15,10 @@ import {
  * `TrasfondoSrd` que ya consume el resto del wizard (competencias.ts,
  * paso-resumen, actions/wizard.ts...), para no tener que tocar esos sitios.
  *
- * Open5e no expone (o no se pudo confirmar en vivo, ver endpoints.ts) qué
- * tres características asocia el PHB 2024 a cada trasfondo para su
- * bonificador, así que aquí se ofrecen las seis: el jugador reparte el
- * +2/+1 (o +1/+1/+1) entre las que quiera en vez de estar limitado a un
- * trío fijo que no podemos obtener de la API con garantías.
+ * El trío de características del bonificador 2024 viene confirmado en vivo
+ * dentro del propio trasfondo (beneficio `type: "ability_score"`); si por
+ * lo que sea no se puede interpretar, se ofrecen las seis para que el
+ * jugador reparta el +2/+1 (o +1/+1/+1) libremente en vez de bloquearse.
  */
 export function trasfondoDesdeOpen5e(bg: Open5eTrasfondo): TrasfondoSrd {
   return {
@@ -27,7 +27,7 @@ export function trasfondoDesdeOpen5e(bg: Open5eTrasfondo): TrasfondoSrd {
     competenciasHabilidad: habilidadesTrasfondo(bg),
     numIdiomasElegibles: idiomasElegiblesTrasfondo(bg),
     competenciasHerramientas: herramientasTrasfondo(bg),
-    bonificadorCaracteristicas: [...CARACTERISTICAS],
+    bonificadorCaracteristicas: caracteristicasBonificadorTrasfondo(bg) ?? [...CARACTERISTICAS],
     rasgo: {
       nombre: nombreRasgoTrasfondo(bg),
       descripcion: descripcionRasgoTrasfondo(bg),

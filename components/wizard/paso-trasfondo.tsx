@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { HABILIDADES, NOMBRES_CARACTERISTICAS, type Caracteristica } from "@/lib/dnd/constantes";
 import { IDIOMAS_DISPONIBLES, RAZAS_SRD } from "@/lib/dnd/datos-srd";
-import { DOTES_SRD } from "@/lib/dnd/dotes";
+import { DOTES_SRD, doteLocalDesdeNombreIngles } from "@/lib/dnd/dotes";
 import { trasfondoDesdeOpen5e } from "@/lib/dnd/trasfondos-open5e";
 import type { BonificadorTrasfondoElegido } from "@/lib/dnd/competencias";
 import { useDebounce } from "@/lib/hooks/use-debounce";
@@ -18,7 +18,7 @@ import {
 } from "@/components/buscador/estado-open5e";
 import { OpcionTarjeta } from "@/components/wizard/opcion-tarjeta";
 import type { DatosWizard, DoteOrigenElegida } from "@/components/wizard/tipos";
-import { identificadorOpen5e, type Open5eTrasfondo } from "@/lib/open5e/types-recursos";
+import { identificadorOpen5e, nombreDoteTrasfondo, type Open5eTrasfondo } from "@/lib/open5e/types-recursos";
 
 const BONIFICADOR_INICIAL: BonificadorTrasfondoElegido = { modo: "reparto", mas2: null, mas1: null };
 const DOTE_INICIAL: DoteOrigenElegida = { modo: "catalogo", doteElegida: null, manualNombre: "", manualDescripcion: "" };
@@ -78,6 +78,9 @@ export function PasoTrasfondo({
     return lista.map((bg) => ({ bg, normalizado: trasfondoDesdeOpen5e(bg) }));
   }, [trasfondosOpen5e, textoTrasfondoDebounced]);
 
+  const bgSeleccionado = trasfondosOpen5e?.find((bg) => identificadorOpen5e(bg) === datos.trasfondoId);
+  const nombreDoteDelTrasfondo = bgSeleccionado ? nombreDoteTrasfondo(bgSeleccionado) : undefined;
+
   const [textoDote, setTextoDote] = useState("");
   const textoDoteDebounced = useDebounce(textoDote, 200);
 
@@ -87,12 +90,17 @@ export function PasoTrasfondo({
   }, [textoDoteDebounced]);
 
   function elegirTrasfondo(bg: Open5eTrasfondo) {
+    const nombreDoteIngles = nombreDoteTrasfondo(bg);
+    const doteSugerida = nombreDoteIngles ? doteLocalDesdeNombreIngles(nombreDoteIngles) : undefined;
+
     actualizar({
       trasfondoId: identificadorOpen5e(bg),
       trasfondoDatos: trasfondoDesdeOpen5e(bg),
       idiomasTrasfondoElegidos: [],
       bonificadorTrasfondo: BONIFICADOR_INICIAL,
-      doteOrigen: DOTE_INICIAL,
+      doteOrigen: doteSugerida
+        ? { ...DOTE_INICIAL, doteElegida: { nombre: doteSugerida.nombre, descripcion: doteSugerida.descripcion } }
+        : { ...DOTE_INICIAL, modo: "manual", manualNombre: nombreDoteIngles ?? "" },
     });
   }
 
@@ -129,9 +137,9 @@ export function PasoTrasfondo({
         </div>
       )}
 
-      {trasfondo && (
+      {trasfondo && trasfondo.rasgo.descripcion && (
         <div className="rounded-lg border border-border bg-card p-3 text-sm">
-          <h4 className="mb-1 font-medium">{trasfondo.rasgo.nombre}</h4>
+          <h4 className="mb-1 font-medium">Equipo inicial</h4>
           <p className="text-muted-foreground">{trasfondo.rasgo.descripcion}</p>
         </div>
       )}
@@ -261,7 +269,13 @@ export function PasoTrasfondo({
 
       {es2024 && trasfondo && (
         <div className="rounded-lg border border-border bg-card p-3 text-sm">
-          <h4 className="mb-2 font-medium">Dote de origen (nivel 1)</h4>
+          <h4 className="mb-1 font-medium">Dote de origen (nivel 1)</h4>
+          {nombreDoteDelTrasfondo && (
+            <p className="mb-2 text-xs text-muted-foreground">
+              Tu trasfondo otorga: <span className="font-medium">{nombreDoteDelTrasfondo}</span> — ya
+              preseleccionada abajo si está en el catálogo; revísala o cámbiala si hace falta.
+            </p>
+          )}
           <div className="mb-3 flex gap-2">
             {(["catalogo", "manual"] as const).map((modo) => (
               <button

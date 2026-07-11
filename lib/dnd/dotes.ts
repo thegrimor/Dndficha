@@ -68,3 +68,37 @@ export const DOTES_SRD: DoteSrd[] = [
     descripcion: "Tus puntos de golpe máximos aumentan en 2 por cada nivel que tengas.",
   },
 ];
+
+/**
+ * Nombre en inglés (tal como lo da Open5e en el beneficio `type: "feat"` de
+ * cada trasfondo, ej. "Magic Initiate (Cleric)") -> id de DOTES_SRD. Se
+ * quita cualquier paréntesis final antes de buscar, porque nuestro
+ * catálogo no distingue la variante de clase de "Magic Initiate".
+ */
+const ID_DOTE_POR_NOMBRE_INGLES: Record<string, string> = {
+  alert: "alerta",
+  crafter: "artesano",
+  healer: "sanador",
+  lucky: "afortunado",
+  "magic initiate": "iniciado-en-magia",
+  musician: "musico",
+  "savage attacker": "atacante-salvaje",
+  skilled: "habilidoso",
+  "tavern brawler": "camorrista-de-taberna",
+  tough: "duro",
+};
+
+/**
+ * Busca en el catálogo local la dote que corresponde al nombre en inglés
+ * que da el trasfondo de Open5e. Devuelve `undefined` si no hay match (el
+ * trasfondo puede dar una dote fuera de las 10 de origen, o el nombre no
+ * se reconoce), para que quien llame pida escribirla a mano.
+ */
+export function doteLocalDesdeNombreIngles(nombreIngles: string): DoteSrd | undefined {
+  const clave = nombreIngles
+    .replace(/\([^)]*\)/g, "")
+    .trim()
+    .toLowerCase();
+  const id = ID_DOTE_POR_NOMBRE_INGLES[clave];
+  return DOTES_SRD.find((dote) => dote.id === id);
+}

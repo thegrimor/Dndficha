@@ -79,48 +79,54 @@ export interface Open5eMonstruo {
 }
 
 /**
- * Trasfondo tal como lo devuelve Open5e. El esquema real de v2 no se pudo
- * verificar en vivo desde este entorno (red bloqueada, ver endpoints.ts),
- * así que se aceptan tanto los nombres de campo "clásicos" de v1
- * (con guion, ej. `skill-proficiencies`) como una variante con guion bajo,
- * por si v2 los renombra. Todo opcional salvo `name`; hay que usar los
- * helpers de más abajo (con fallback) en vez de leer los campos a pelo.
+ * Un beneficio del trasfondo tal como lo devuelve Open5e v2 (confirmado en
+ * vivo): cada trasfondo trae un array `benefits` con entradas tipadas, ej.
+ * `{name: "Feat", desc: "Alert", type: "feat"}` o
+ * `{name: "Skill Proficiencies", desc: "Insight and Religion", type: "skill_proficiency"}`.
+ * Es aquí, dentro del propio trasfondo, donde viene la dote de origen (no
+ * hay elección: cada trasfondo da una fija) y el trío de características
+ * del bonificador 2024 — no en un recurso `feats` separado (ese resultó
+ * estar dominado por contenido de terceros, ver conversación).
  */
+export interface Open5eBeneficioTrasfondo {
+  name?: string;
+  desc?: string;
+  type?: string;
+}
+
 export interface Open5eTrasfondo {
   slug?: string;
   key?: string;
   name: string;
   desc?: string;
-  "skill-proficiencies"?: string;
-  skill_proficiencies?: string;
-  "tool-proficiencies"?: string | null;
-  tool_proficiencies?: string | null;
-  languages?: string;
-  feature?: string;
-  "feature-desc"?: string;
-  feature_desc?: string;
+  benefits?: Open5eBeneficioTrasfondo[];
   document__title?: string;
   document?: { key: string; display_name?: string; name?: string };
   [clave: string]: unknown;
 }
 
-/** Primer campo de texto no vacío entre varias claves candidatas de un objeto de Open5e. */
-function primerTexto(obj: Record<string, unknown>, claves: string[]): string | undefined {
-  for (const clave of claves) {
-    const valor = obj[clave];
-    if (typeof valor === "string" && valor.trim()) return valor.trim();
-  }
-  return undefined;
+function beneficiosPorTipo(bg: Open5eTrasfondo, tipo: string): Open5eBeneficioTrasfondo[] {
+  return (bg.benefits ?? []).filter((beneficio) => beneficio.type === tipo);
 }
 
-/** Nombre del rasgo que otorga el trasfondo (ej. "Shelter of the Faithful"), con fallback al nombre del trasfondo. */
+/** Nombre a mostrar para el trasfondo (siempre `name`, no hay un "rasgo" separado en el SRD 2024). */
 export function nombreRasgoTrasfondo(bg: Open5eTrasfondo): string {
-  return primerTexto(bg, ["feature"]) ?? bg.name;
+  return bg.name;
 }
 
-/** Descripción del rasgo del trasfondo: usa feature-desc si existe, si no la descripción general. */
+/** Equipo inicial del trasfondo (beneficio `type: "equipment"`), como texto libre. */
 export function descripcionRasgoTrasfondo(bg: Open5eTrasfondo): string {
-  return primerTexto(bg, ["feature-desc", "feature_desc"]) ?? bg.desc?.trim() ?? "";
+  const equipo = beneficiosPorTipo(bg, "equipment")[0]?.desc?.trim();
+  return equipo ?? bg.desc?.trim() ?? "";
+}
+
+/**
+ * Nombre de la dote de origen que otorga el trasfondo (beneficio
+ * `type: "feat"`, ej. "Alert" o "Magic Initiate (Cleric)"), tal como lo da
+ * Open5e en inglés. No hay elección: cada trasfondo da una dote fija.
+ */
+export function nombreDoteTrasfondo(bg: Open5eTrasfondo): string | undefined {
+  return beneficiosPorTipo(bg, "feat")[0]?.desc?.trim() || undefined;
 }
 
 const ID_HABILIDAD_POR_NOMBRE_INGLES: Record<string, string> = {
@@ -164,19 +170,17 @@ export function idsHabilidadDesdeTexto(texto: string | undefined): string[] {
   return ids;
 }
 
-/** Competencias de habilidad del trasfondo, ya normalizadas a ids internos. */
+/** Competencias de habilidad del trasfondo (beneficio `type: "skill_proficiency"`), ya normalizadas a ids internos. */
 export function habilidadesTrasfondo(bg: Open5eTrasfondo): string[] {
-  return idsHabilidadDesdeTexto(primerTexto(bg, ["skill-proficiencies", "skill_proficiencies"]));
+  const texto = beneficiosPorTipo(bg, "skill_proficiency")[0]?.desc;
+  return idsHabilidadDesdeTexto(texto);
 }
 
-/** Competencias de herramienta del trasfondo, como texto libre (no hay taxonomía interna de herramientas). */
+/** Competencias de herramienta del trasfondo (beneficio `type: "tool_proficiency"`), como texto libre. */
 export function herramientasTrasfondo(bg: Open5eTrasfondo): string[] {
-  const texto = primerTexto(bg, ["tool-proficiencies", "tool_proficiencies"]);
+  const texto = beneficiosPorTipo(bg, "tool_proficiency")[0]?.desc?.trim();
   if (!texto || /^none$/i.test(texto)) return [];
-  return texto
-    .split(/,|\by\b|\band\b/i)
-    .map((parte) => parte.trim())
-    .filter(Boolean);
+  return [texto];
 }
 
 const NUMERO_POR_PALABRA: Record<string, number> = {
@@ -187,12 +191,16 @@ const NUMERO_POR_PALABRA: Record<string, number> = {
 };
 
 /**
- * Número de idiomas adicionales a elegir según el texto libre del trasfondo
- * (ej. "Two of your choice"). Si no se puede interpretar, 0 (no bloquea el
- * wizard, simplemente no ofrece elección de idioma para ese trasfondo).
+ * Número de idiomas adicionales a elegir según el beneficio de idiomas del
+ * trasfondo, si existe (ej. "Two of your choice"). El SRD 2024 no otorga
+ * idiomas por trasfondo (confirmado en vivo: sin beneficio de ese tipo), así
+ * que esto da 0 ahí; se deja por si el SRD 2014 sí lo incluye con un
+ * `type` que contenga "language".
  */
 export function idiomasElegiblesTrasfondo(bg: Open5eTrasfondo): number {
-  const texto = bg.languages?.toLowerCase();
+  const texto = (bg.benefits ?? [])
+    .find((beneficio) => beneficio.type?.toLowerCase().includes("language"))
+    ?.desc?.toLowerCase();
   if (!texto) return 0;
   const numeroDigito = texto.match(/\d+/);
   if (numeroDigito) return Number(numeroDigito[0]);
@@ -200,6 +208,34 @@ export function idiomasElegiblesTrasfondo(bg: Open5eTrasfondo): number {
     if (texto.includes(palabra)) return valor;
   }
   return 0;
+}
+
+const CARACTERISTICA_POR_NOMBRE_INGLES: Record<string, "str" | "dex" | "con" | "int" | "wis" | "cha"> = {
+  strength: "str",
+  dexterity: "dex",
+  constitution: "con",
+  intelligence: "int",
+  wisdom: "wis",
+  charisma: "cha",
+};
+
+/**
+ * Trío de características asociado al bonificador del trasfondo (beneficio
+ * `type: "ability_score"`, ej. "Intelligence, Wisdom, Charisma"), en el
+ * mismo orden que da Open5e. Si no se reconocen exactamente 3, devuelve
+ * `undefined` (quien llama decide el fallback).
+ */
+export function caracteristicasBonificadorTrasfondo(
+  bg: Open5eTrasfondo
+): Array<"str" | "dex" | "con" | "int" | "wis" | "cha"> | undefined {
+  const texto = beneficiosPorTipo(bg, "ability_score")[0]?.desc;
+  if (!texto) return undefined;
+  const nombres = texto
+    .split(/,|\by\b|\band\b/i)
+    .map((parte) => parte.trim().toLowerCase())
+    .filter(Boolean);
+  const ids = nombres.map((nombre) => CARACTERISTICA_POR_NOMBRE_INGLES[nombre]).filter(Boolean);
+  return ids.length === 3 ? ids : undefined;
 }
 
 /** Identificador estable de un recurso de Open5e, sea v1 (`slug`) o v2 (`key`). */
