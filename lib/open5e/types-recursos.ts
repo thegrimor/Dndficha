@@ -8,20 +8,25 @@
  */
 
 export interface Open5eHechizo {
-  slug: string;
+  /** v1 usa `slug`, v2 usa `key`; ver identificadorOpen5e(). */
+  slug?: string;
+  key?: string;
   name: string;
   level?: number;
   level_int?: number;
-  school?: string;
+  /** v1 lo da como string plano; v2 como objeto {name, key}. */
+  school?: string | { name: string; key: string };
   desc?: string;
   higher_level?: string;
-  range?: string;
+  range?: string | number;
+  range_text?: string;
   components?: string;
   duration?: string;
   concentration?: boolean | string;
   ritual?: boolean | string;
-  classes?: Array<{ name: string }> | string[];
+  classes?: Array<{ name: string; key?: string }> | string[];
   document__title?: string;
+  document?: { key: string; display_name?: string; name?: string };
   [clave: string]: unknown;
 }
 
@@ -62,6 +67,35 @@ export interface Open5eMonstruo {
   hit_points?: number;
   armor_class?: number;
   [clave: string]: unknown;
+}
+
+/** Identificador estable de un recurso de Open5e, sea v1 (`slug`) o v2 (`key`). */
+export function identificadorOpen5e(item: { slug?: string; key?: string; name: string }): string {
+  return item.slug ?? item.key ?? item.name;
+}
+
+const NOMBRES_ESCUELA: Record<string, string> = {
+  abjuration: "Abjuración",
+  conjuration: "Conjuración",
+  divination: "Adivinación",
+  enchantment: "Encantamiento",
+  evocation: "Evocación",
+  illusion: "Ilusión",
+  necromancy: "Nigromancia",
+  transmutation: "Transmutación",
+};
+
+/** Clave normalizada de la escuela (ej. "evocation"), sea v1 (string) o v2 ({name, key}). */
+export function claveEscuela(escuela?: string | { name: string; key: string }): string | undefined {
+  if (!escuela) return undefined;
+  return (typeof escuela === "string" ? escuela : escuela.key).toLowerCase();
+}
+
+/** Nombre legible en español de una escuela de hechizo. */
+export function nombreEscuela(escuela?: string | { name: string; key: string }): string {
+  const clave = claveEscuela(escuela);
+  if (!clave) return "Escuela desconocida";
+  return NOMBRES_ESCUELA[clave] ?? (typeof escuela === "string" ? escuela : escuela!.name);
 }
 
 /** Nivel numérico de un hechizo, tolerando las variantes que puede mandar Open5e. */

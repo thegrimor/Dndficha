@@ -12,12 +12,20 @@ import {
   SinResultadosOpen5e,
 } from "@/components/buscador/estado-open5e";
 import { useDebounce } from "@/lib/hooks/use-debounce";
-import { ESCUELAS_HECHIZO, NIVELES_HECHIZO, nivelHechizo, type Open5eHechizo } from "@/lib/open5e/types-recursos";
+import { EDICIONES_DND, type EdicionDnD } from "@/lib/open5e/ediciones";
+import {
+  claveEscuela,
+  ESCUELAS_HECHIZO,
+  identificadorOpen5e,
+  NIVELES_HECHIZO,
+  nivelHechizo,
+  type Open5eHechizo,
+} from "@/lib/open5e/types-recursos";
 
 const TAMANO_LOTE_VISIBLE = 24;
 
-async function obtenerCatalogoHechizos(): Promise<Open5eHechizo[]> {
-  const respuesta = await fetch("/api/open5e/spells");
+async function obtenerCatalogoHechizos(edicion: EdicionDnD): Promise<Open5eHechizo[]> {
+  const respuesta = await fetch(`/api/open5e/spells?edicion=${edicion}`);
   if (!respuesta.ok) {
     throw new Error("open5e_unavailable");
   }
@@ -26,6 +34,7 @@ async function obtenerCatalogoHechizos(): Promise<Open5eHechizo[]> {
 }
 
 export function BuscadorHechizos() {
+  const [edicion, setEdicion] = useState<EdicionDnD>("2014");
   const [texto, setTexto] = useState("");
   const [nivel, setNivel] = useState("");
   const [escuela, setEscuela] = useState("");
@@ -33,14 +42,15 @@ export function BuscadorHechizos() {
   const textoDebounced = useDebounce(texto, 200);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["open5e", "spells", "completo"],
-    queryFn: obtenerCatalogoHechizos,
+    queryKey: ["open5e", "spells", "completo", edicion],
+    queryFn: () => obtenerCatalogoHechizos(edicion),
     staleTime: 60 * 60 * 1000,
     retry: 0,
   });
 
-  // El catálogo completo se trae una sola vez; el filtrado es 100% en cliente
-  // porque Open5e no siempre respeta los parámetros de búsqueda/nivel/escuela.
+  // El catálogo completo se trae una sola vez por edición; el filtrado es
+  // 100% en cliente porque Open5e no siempre respeta los parámetros de
+  // búsqueda/nivel/escuela.
   const filtrados = useMemo(() => {
     if (!data) return [];
     const textoNormalizado = textoDebounced.trim().toLowerCase();
@@ -50,7 +60,7 @@ export function BuscadorHechizos() {
         return false;
       }
       if (nivel !== "" && nivelHechizo(hechizo) !== Number(nivel)) return false;
-      if (escuela && hechizo.school?.toLowerCase() !== escuela) return false;
+      if (escuela && claveEscuela(hechizo.school) !== escuela) return false;
       return true;
     });
   }, [data, textoDebounced, nivel, escuela]);
@@ -58,7 +68,7 @@ export function BuscadorHechizos() {
   // Reinicia el lote visible cuando cambian los filtros (patrón "ajustar
   // estado durante el render" en vez de un efecto, para no disparar un
   // render extra en cascada).
-  const filtroActual = `${textoDebounced}|${nivel}|${escuela}`;
+  const filtroActual = `${edicion}|${textoDebounced}|${nivel}|${escuela}`;
   const [filtroAnterior, setFiltroAnterior] = useState(filtroActual);
   if (filtroActual !== filtroAnterior) {
     setFiltroAnterior(filtroActual);
@@ -71,6 +81,17 @@ export function BuscadorHechizos() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <select
+          value={edicion}
+          onChange={(evento) => setEdicion(evento.target.value as EdicionDnD)}
+          className="h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {EDICIONES_DND.map((opcion) => (
+            <option key={opcion.value} value={opcion.value}>
+              {opcion.label}
+            </option>
+          ))}
+        </select>
         <Input
           placeholder="Buscar hechizo por nombre..."
           value={texto}
@@ -111,7 +132,7 @@ export function BuscadorHechizos() {
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {resultados.map((hechizo) => (
-              <TarjetaHechizo key={hechizo.slug} hechizo={hechizo} />
+              <TarjetaHechizo key={identificadorOpen5e(hechizo)} hechizo={hechizo} />
             ))}
           </div>
           {hayMas && (

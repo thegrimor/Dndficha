@@ -1,10 +1,12 @@
-import { construirUrlOpen5e, type RecursoOpen5e } from "./endpoints";
+import { construirUrlOpen5e, construirUrlOpen5eV2, type RecursoOpen5e, type RecursoOpen5eV2 } from "./endpoints";
 import type { RespuestaPaginadaOpen5e } from "./types";
 
 const TIMEOUT_MS = 8000;
+const TAMANO_PAGINA_AGREGADO = 100;
+const MAX_PAGINAS_AGREGADO = 30;
 
 /**
- * Llama a un recurso de Open5e con timeout y un reintento único.
+ * Llama a un recurso de Open5e v1 con timeout y un reintento único.
  * Nunca se debe invocar desde el navegador: solo desde los Route Handlers
  * de app/api/open5e/*, que actúan de proxy/cache.
  */
@@ -12,27 +14,11 @@ export async function fetchOpen5e<T>(
   recurso: RecursoOpen5e,
   params: Record<string, string | number | undefined>
 ): Promise<RespuestaPaginadaOpen5e<T>> {
-  const url = construirUrlOpen5e(recurso, params);
-
-  try {
-    return await intentarFetch<T>(url);
-  } catch (error) {
-    console.error(`[open5e] primer intento falló para ${url}:`, error);
-    // Reintento único antes de rendirse.
-    try {
-      return await intentarFetch<T>(url);
-    } catch (error2) {
-      console.error(`[open5e] reintento también falló para ${url}:`, error2);
-      throw error2;
-    }
-  }
+  return fetchConReintento<T>(construirUrlOpen5e(recurso, params), "open5e");
 }
 
-const TAMANO_PAGINA_AGREGADO = 100;
-const MAX_PAGINAS_AGREGADO = 30;
-
 /**
- * Trae TODAS las páginas de un recurso y las combina en un solo array.
+ * Trae TODAS las páginas de un recurso v1 y las combina en un solo array.
  *
  * Se usa en vez de dejar que el cliente mande `search`/`level`/`school`/etc.
  * a Open5e, porque esos filtros no siempre se aplican del lado de Open5e
@@ -52,6 +38,58 @@ export async function fetchOpen5eCompleto<T>(recurso: RecursoOpen5e): Promise<T[
   }
 
   return resultados;
+}
+
+/**
+ * Llama a un recurso de Open5e v2. v2 es la única versión que separa el
+ * contenido por edición (SRD 2014 vs SRD 2024) vía `document__key`.
+ */
+export async function fetchOpen5eV2<T>(
+  recurso: RecursoOpen5eV2,
+  params: Record<string, string | number | undefined>
+): Promise<RespuestaPaginadaOpen5e<T>> {
+  return fetchConReintento<T>(construirUrlOpen5eV2(recurso, params), "open5e-v2");
+}
+
+/**
+ * Trae TODAS las páginas de un recurso v2 filtrado por `document__key`
+ * (edición de reglas) y las combina en un solo array. Igual que en v1, el
+ * resto de filtros (nivel, escuela, tipo, texto) se ignoran aquí a
+ * propósito y se aplican en el cliente.
+ */
+export async function fetchOpen5eV2CompletoPorDocumento<T>(
+  recurso: RecursoOpen5eV2,
+  documentKey: string
+): Promise<T[]> {
+  const resultados: T[] = [];
+  let offset = 0;
+
+  for (let pagina = 0; pagina < MAX_PAGINAS_AGREGADO; pagina++) {
+    const datos = await fetchOpen5eV2<T>(recurso, {
+      document__key: documentKey,
+      limit: TAMANO_PAGINA_AGREGADO,
+      offset,
+    });
+    resultados.push(...datos.results);
+    if (!datos.next) break;
+    offset += TAMANO_PAGINA_AGREGADO;
+  }
+
+  return resultados;
+}
+
+async function fetchConReintento<T>(url: string, etiqueta: string): Promise<RespuestaPaginadaOpen5e<T>> {
+  try {
+    return await intentarFetch<T>(url);
+  } catch (error) {
+    console.error(`[${etiqueta}] primer intento falló para ${url}:`, error);
+    try {
+      return await intentarFetch<T>(url);
+    } catch (error2) {
+      console.error(`[${etiqueta}] reintento también falló para ${url}:`, error2);
+      throw error2;
+    }
+  }
 }
 
 async function intentarFetch<T>(url: string): Promise<RespuestaPaginadaOpen5e<T>> {

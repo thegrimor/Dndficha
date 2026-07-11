@@ -2,25 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BotonAnadirAFicha } from "@/components/buscador/boton-anadir-a-ficha";
 import {
   clasesHechizo,
+  nombreEscuela,
   nombreNivelHechizo,
   type Open5eHechizo,
 } from "@/lib/open5e/types-recursos";
-
-const NOMBRES_ESCUELA: Record<string, string> = {
-  abjuration: "Abjuración",
-  conjuration: "Conjuración",
-  divination: "Adivinación",
-  enchantment: "Encantamiento",
-  evocation: "Evocación",
-  illusion: "Ilusión",
-  necromancy: "Nigromancia",
-  transmutation: "Transmutación",
-};
-
-function nombreEscuela(escuela?: string): string {
-  if (!escuela) return "Escuela desconocida";
-  return NOMBRES_ESCUELA[escuela.toLowerCase()] ?? escuela;
-}
 
 interface TarjetaHechizoProps {
   hechizo: Open5eHechizo;
@@ -28,6 +13,7 @@ interface TarjetaHechizoProps {
 
 export function TarjetaHechizo({ hechizo }: TarjetaHechizoProps) {
   const clases = clasesHechizo(hechizo);
+  const alcance = hechizo.range_text ?? hechizo.range;
 
   return (
     <Card className="flex h-full flex-col">
@@ -44,9 +30,9 @@ export function TarjetaHechizo({ hechizo }: TarjetaHechizoProps) {
         </p>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-3 text-sm text-muted-foreground">
-        {hechizo.range && (
+        {alcance && (
           <p>
-            <span className="font-medium text-foreground">Alcance:</span> {hechizo.range}
+            <span className="font-medium text-foreground">Alcance:</span> {alcance}
           </p>
         )}
         {hechizo.duration && (

@@ -1,7 +1,12 @@
 "use server";
 
 import { actualizarPersonaje, obtenerPersonaje } from "@/actions/personajes";
-import { nivelHechizo, type Open5eHechizo, type Open5eObjetoMagico } from "@/lib/open5e/types-recursos";
+import {
+  identificadorOpen5e,
+  nivelHechizo,
+  type Open5eHechizo,
+  type Open5eObjetoMagico,
+} from "@/lib/open5e/types-recursos";
 
 interface ResultadoAgregar {
   ok: boolean;
@@ -22,7 +27,8 @@ export async function agregarHechizoAFicha(
     return { ok: false, error: "No se encontró esa ficha." };
   }
 
-  const yaEstaba = personaje.sheet.spells.known.some((conocido) => conocido.slug === hechizo.slug);
+  const idHechizo = identificadorOpen5e(hechizo);
+  const yaEstaba = personaje.sheet.spells.known.some((conocido) => conocido.slug === idHechizo);
   if (yaEstaba) {
     return { ok: false, error: "Ese hechizo ya está en la ficha." };
   }
@@ -34,7 +40,7 @@ export async function agregarHechizoAFicha(
       known: [
         ...personaje.sheet.spells.known,
         {
-          slug: hechizo.slug,
+          slug: idHechizo,
           nombre: hechizo.name,
           nivel: nivelHechizo(hechizo),
           fuente: "open5e" as const,
