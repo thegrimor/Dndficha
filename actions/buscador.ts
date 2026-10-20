@@ -1,6 +1,6 @@
 "use server";
 
-import { actualizarPersonaje, obtenerPersonaje } from "@/actions/personajes";
+import { api, ApiError } from "@/lib/api/cliente";
 import {
   identificadorOpen5e,
   nivelHechizo,
@@ -14,88 +14,45 @@ interface ResultadoAgregar {
   error?: string;
 }
 
-/**
- * Añade un hechizo del buscador SRD a `sheet.spells.known` de una ficha
- * existente, guardando un snapshot completo en `datos` por si Open5e cambia
- * o deja de estar disponible más adelante.
- */
-export async function agregarHechizoAFicha(
-  personajeId: string,
-  hechizo: Open5eHechizo
-): Promise<ResultadoAgregar> {
-  const personaje = await obtenerPersonaje(personajeId);
-  if (!personaje) {
-    return { ok: false, error: "No se encontró esa ficha." };
-  }
-
-  const idHechizo = identificadorOpen5e(hechizo);
-  const yaEstaba = personaje.sheet.spells.known.some((conocido) => conocido.slug === idHechizo);
-  if (yaEstaba) {
-    return { ok: false, error: "Ese hechizo ya está en la ficha." };
-  }
-
-  const nuevoSheet = {
-    ...personaje.sheet,
-    spells: {
-      ...personaje.sheet.spells,
-      known: [
-        ...personaje.sheet.spells.known,
-        {
-          slug: idHechizo,
-          nombre: hechizo.name,
-          nivel: nivelHechizo(hechizo),
-          fuente: "open5e" as const,
-          datos: hechizo,
-        },
-      ],
-    },
-  };
-
+async function agregar(ruta: string, cuerpo: object): Promise<ResultadoAgregar> {
   try {
-    await actualizarPersonaje(personajeId, { sheet: nuevoSheet });
+    await api(ruta, { method: "POST", body: cuerpo });
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "No se pudo guardar." };
+    if (error instanceof ApiError) {
+      if (error.status === 404) return { ok: false, error: "No se encontró esa ficha." };
+      return { ok: false, error: error.message };
+    }
+    throw error;
   }
 }
 
 /**
- * Añade un objeto (mágico) del buscador SRD a `sheet.inventory` de una
- * ficha existente.
+ * Añade un hechizo del buscador SRD al libro de hechizos de una ficha,
+ * guardando un snapshot completo en `datos` por si Open5e cambia o deja de
+ * estar disponible más adelante. El backend rechaza duplicados.
  */
-export async function agregarObjetoAFicha(
-  personajeId: string,
-  objeto: Open5eObjetoMagico
-): Promise<ResultadoAgregar> {
-  const personaje = await obtenerPersonaje(personajeId);
-  if (!personaje) {
-    return { ok: false, error: "No se encontró esa ficha." };
-  }
+export async function agregarHechizoAFicha(personajeId: string, hechizo: Open5eHechizo): Promise<ResultadoAgregar> {
+  return agregar(`/characters/${encodeURIComponent(personajeId)}/spellbook/spells`, {
+    spell: {
+      slug: identificadorOpen5e(hechizo),
+      nombre: hechizo.name,
+      nivel: nivelHechizo(hechizo),
+      fuente: "open5e",
+      datos: hechizo,
+    },
+  });
+}
 
-  const idObjeto = identificadorOpen5e(objeto);
-  const yaEstaba = personaje.sheet.inventory.some((item) => item.slug === idObjeto);
-  if (yaEstaba) {
-    return { ok: false, error: "Ese objeto ya está en la ficha." };
-  }
-
-  const nuevoSheet = {
-    ...personaje.sheet,
-    inventory: [
-      ...personaje.sheet.inventory,
-      {
-        slug: idObjeto,
-        nombre: objeto.name,
-        tipo: nombreCategoriaObjeto(objeto),
-        fuente: "open5e" as const,
-        datos: objeto,
-      },
-    ],
-  };
-
-  try {
-    await actualizarPersonaje(personajeId, { sheet: nuevoSheet });
-    return { ok: true };
-  } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "No se pudo guardar." };
-  }
+/** Añade un objeto (mágico) del buscador SRD al inventario de una ficha. */
+export async function agregarObjetoAFicha(personajeId: string, objeto: Open5eObjetoMagico): Promise<ResultadoAgregar> {
+  return agregar(`/characters/${encodeURIComponent(personajeId)}/inventory`, {
+    item: {
+      slug: identificadorOpen5e(objeto),
+      nombre: objeto.name,
+      tipo: nombreCategoriaObjeto(objeto),
+      fuente: "open5e",
+      datos: objeto,
+    },
+  });
 }

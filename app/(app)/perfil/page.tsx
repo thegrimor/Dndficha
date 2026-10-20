@@ -1,28 +1,21 @@
 import Link from "next/link";
 import { Mail, ScrollText, UserRound } from "lucide-react";
 
-import { createClient } from "@/lib/supabase/server";
+import { usuarioActual } from "@/lib/api/usuario";
 import { listarPersonajes } from "@/actions/personajes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 
 export default async function PerfilPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [user, personajes] = await Promise.all([usuarioActual(), listarPersonajes()]);
 
-  const personajes = await listarPersonajes();
-
-  const email = user?.email ?? "";
-  const nombre = (user?.user_metadata?.username as string | undefined) || email || "Aventurero";
-  const miembroDesde = user?.created_at
-    ? new Date(user.created_at).toLocaleDateString("es-ES", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    : null;
+  const email = user.email;
+  const nombre = user.username || email || "Aventurero";
+  const miembroDesde = new Date(user.createdAt).toLocaleDateString("es-ES", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
   const inicial = nombre.trim().charAt(0).toUpperCase() || "?";
 
   return (

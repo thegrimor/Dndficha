@@ -2,43 +2,52 @@
 
 import { redirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
+import { api, ApiError } from "@/lib/api/cliente";
+import { borrarSesion, guardarSesion, obtenerToken } from "@/lib/api/sesion";
+
+interface RespuestaSesion {
+  token: string;
+  expiresAt: string;
+}
+
+async function abrirSesion(ruta: "/auth/login" | "/auth/register", cuerpo: object, rutaError: string) {
+  let sesion: RespuestaSesion;
+  try {
+    sesion = await api<RespuestaSesion>(ruta, { method: "POST", body: cuerpo, autenticada: false });
+  } catch (error) {
+    const mensaje = error instanceof ApiError ? error.message : "No se pudo completar la operación.";
+    redirect(`${rutaError}?error=${encodeURIComponent(mensaje)}`);
+  }
+  await guardarSesion(sesion.token, sesion.expiresAt);
+  redirect("/personajes");
+}
 
 export async function iniciarSesion(formData: FormData) {
-  const email = String(formData.get("email"));
-  const password = String(formData.get("password"));
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
-  }
-
-  redirect("/personajes");
+  await abrirSesion(
+    "/auth/login",
+    { email: String(formData.get("email") ?? ""), password: String(formData.get("password") ?? "") },
+    "/login"
+  );
 }
 
 export async function registrarse(formData: FormData) {
-  const email = String(formData.get("email"));
-  const password = String(formData.get("password"));
-  const username = String(formData.get("username"));
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { username } },
-  });
-
-  if (error) {
-    redirect(`/registro?error=${encodeURIComponent(error.message)}`);
-  }
-
-  redirect("/personajes");
+  await abrirSesion(
+    "/auth/register",
+    {
+      email: String(formData.get("email") ?? ""),
+      username: String(formData.get("username") ?? ""),
+      password: String(formData.get("password") ?? ""),
+    },
+    "/registro"
+  );
 }
 
 export async function cerrarSesion() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  const token = await obtenerToken();
+  if (token) {
+    // Si el backend no responde, la cookie se borra igualmente.
+    await api("/auth/logout", { method: "POST", token }).catch(() => undefined);
+  }
+  await borrarSesion();
   redirect("/login");
 }

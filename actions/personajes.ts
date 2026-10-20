@@ -3,81 +3,44 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
-import { fichaVacia, type Personaje } from "@dndficha/rules";
-
-async function usuarioActualOFalla() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  return { supabase, user };
-}
+import { api, ApiError } from "@/lib/api/cliente";
+import type { Personaje } from "@dndficha/rules";
 
 export async function listarPersonajes(): Promise<Personaje[]> {
-  const { supabase, user } = await usuarioActualOFalla();
-
-  const { data, error } = await supabase
-    .from("characters")
-    .select("*")
-    .eq("owner_id", user.id)
-    .order("updated_at", { ascending: false });
-
-  if (error) throw new Error(error.message);
-  return data as Personaje[];
+  const { characters } = await api<{ characters: Personaje[] }>("/characters");
+  return characters;
 }
 
 export async function obtenerPersonaje(id: string): Promise<Personaje | null> {
-  const { supabase } = await usuarioActualOFalla();
-
-  const { data, error } = await supabase
-    .from("characters")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) return null;
-  return data as Personaje;
+  try {
+    const { character } = await api<{ character: Personaje }>(`/characters/${encodeURIComponent(id)}`);
+    return character;
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 400)) return null;
+    throw error;
+  }
 }
 
 export async function crearPersonaje(formData: FormData) {
-  const { supabase, user } = await usuarioActualOFalla();
-
   const name = String(formData.get("name") ?? "Nuevo personaje");
-
-  const { data, error } = await supabase
-    .from("characters")
-    .insert({ owner_id: user.id, name, sheet: fichaVacia() })
-    .select("id")
-    .single();
-
-  if (error) throw new Error(error.message);
+  const { character } = await api<{ character: Personaje }>("/characters", { method: "POST", body: { name } });
 
   revalidatePath("/personajes");
-  redirect(`/personajes/${data.id}`);
+  redirect(`/personajes/${character.id}`);
 }
 
 export async function actualizarPersonaje(
   id: string,
   cambios: Partial<Pick<Personaje, "name" | "race" | "class" | "level" | "background" | "alignment" | "sheet">>
 ) {
-  const { supabase } = await usuarioActualOFalla();
-
-  const { error } = await supabase.from("characters").update(cambios).eq("id", id);
-  if (error) throw new Error(error.message);
+  await api(`/characters/${encodeURIComponent(id)}`, { method: "PATCH", body: cambios });
 
   revalidatePath(`/personajes/${id}`);
   revalidatePath("/personajes");
 }
 
 export async function eliminarPersonaje(id: string) {
-  const { supabase } = await usuarioActualOFalla();
-
-  const { error } = await supabase.from("characters").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  await api(`/characters/${encodeURIComponent(id)}`, { method: "DELETE" });
 
   revalidatePath("/personajes");
 }

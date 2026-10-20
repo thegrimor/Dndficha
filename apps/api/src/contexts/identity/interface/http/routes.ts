@@ -6,7 +6,7 @@ import { COOKIE_SESION, tokenDeRequest, type RequireAuth } from "../../../../mai
 import type { AuthService, SesionIniciada } from "../../application/auth-service";
 import type { User } from "../../domain/user";
 
-const usuarioDto = (u: User) => ({ id: u.id, email: u.email, username: u.username });
+const usuarioDto = (u: User) => ({ id: u.id, email: u.email, username: u.username, createdAt: u.createdAt.toISOString() });
 
 export function rutasIdentity(auth: AuthService, requireAuth: RequireAuth, opciones: { produccion: boolean; intentosPorMinuto: number }) {
   return async (app: FastifyInstance) => {
