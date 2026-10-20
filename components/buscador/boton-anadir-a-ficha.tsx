@@ -5,8 +5,8 @@ import { useState } from "react";
 import { agregarHechizoAFicha, agregarObjetoAFicha } from "@/actions/buscador";
 import { listarPersonajes } from "@/actions/personajes";
 import { Button } from "@/components/ui/button";
-import type { Open5eHechizo, Open5eObjetoMagico } from "@/lib/open5e/types-recursos";
-import type { Personaje } from "@/types/personaje";
+import type { Open5eHechizo, Open5eObjetoMagico } from "@dndficha/rules";
+import type { Personaje } from "@dndficha/rules";
 
 type Estado =
   | { fase: "inicial" }

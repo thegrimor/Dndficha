@@ -1,5 +1,5 @@
-import { CARACTERISTICAS } from "@/lib/dnd/constantes";
-import type { TrasfondoSrd } from "@/lib/dnd/datos-srd";
+import { CARACTERISTICAS } from "./constantes";
+import type { TrasfondoSrd } from "./datos-srd";
 import {
   caracteristicasBonificadorTrasfondo,
   descripcionRasgoTrasfondo,
@@ -8,7 +8,7 @@ import {
   idiomasElegiblesTrasfondo,
   nombreRasgoTrasfondo,
   type Open5eTrasfondo,
-} from "@/lib/open5e/types-recursos";
+} from "./types-recursos";
 
 /**
  * Adapta un trasfondo tal como lo devuelve Open5e a la forma interna

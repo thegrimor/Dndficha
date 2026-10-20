@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { actualizarPersonaje } from "@/actions/personajes";
 import { ControlesEdicion } from "@/components/ficha/controles-edicion";
 import { Input } from "@/components/ui/input";
-import { EDICIONES_DND } from "@/lib/open5e/ediciones";
-import type { Personaje } from "@/types/personaje";
+import { EDICIONES_DND } from "@dndficha/rules";
+import type { Personaje } from "@dndficha/rules";
 
 interface DatosEncabezado {
   name: string;

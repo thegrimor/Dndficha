@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 import { unstable_rethrow } from "next/navigation";
 
 import { crearPersonajeDesdeWizard } from "@/actions/wizard";
-import { CARACTERISTICAS } from "@/lib/dnd/constantes";
-import { CLASES_SRD, RAZAS_SRD } from "@/lib/dnd/datos-srd";
+import { CARACTERISTICAS } from "@dndficha/rules";
+import { CLASES_SRD, RAZAS_SRD } from "@dndficha/rules";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

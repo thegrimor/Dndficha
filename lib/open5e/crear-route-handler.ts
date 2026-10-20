@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { fetchOpen5e, fetchOpen5eCompleto, fetchOpen5eV2CompletoPorDocumento } from "./client";
-import { DOCUMENT_KEY_POR_EDICION, edicionDesdeParam } from "./ediciones";
+import { DOCUMENT_KEY_POR_EDICION, edicionDesdeParam } from "@dndficha/rules";
 import type { RecursoOpen5e, RecursoOpen5eV2 } from "./endpoints";
 
 /**

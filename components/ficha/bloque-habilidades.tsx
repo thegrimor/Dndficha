@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import { actualizarPersonaje } from "@/actions/personajes";
 import { ControlesEdicion } from "@/components/ficha/controles-edicion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { bonoConCompetencia } from "@/lib/dnd/calculos";
-import { HABILIDADES } from "@/lib/dnd/constantes";
-import type { FichaPersonaje, Personaje } from "@/types/personaje";
+import { bonoConCompetencia } from "@dndficha/rules";
+import { HABILIDADES } from "@dndficha/rules";
+import type { FichaPersonaje, Personaje } from "@dndficha/rules";
 
 type Skills = FichaPersonaje["skills"];
 

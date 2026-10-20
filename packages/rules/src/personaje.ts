@@ -1,5 +1,5 @@
-import type { Caracteristica } from "@/lib/dnd/constantes";
-import type { EdicionDnD } from "@/lib/open5e/ediciones";
+import type { Caracteristica } from "./constantes";
+import type { EdicionDnD } from "./ediciones";
 
 export interface FichaPersonaje {
   /** Edición de reglas del personaje (2014 o 2024/"5.5"); se fija al crearlo. */

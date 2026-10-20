@@ -4,7 +4,7 @@
 // Cuando la integración de Open5e (app/api/open5e/*) esté disponible, este
 // archivo puede migrarse a un fetch real sin cambiar la forma de estos tipos.
 
-import type { Caracteristica } from "@/lib/dnd/constantes";
+import type { Caracteristica } from "./constantes";
 
 export interface RasgoSrd {
   nombre: string;

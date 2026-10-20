@@ -1,7 +1,7 @@
-import type { Caracteristica } from "@/lib/dnd/constantes";
-import type { ClaseSrd, RazaSrd, TrasfondoSrd } from "@/lib/dnd/datos-srd";
-import type { EdicionDnD } from "@/lib/open5e/ediciones";
-import type { FichaPersonaje } from "@/types/personaje";
+import type { Caracteristica } from "./constantes";
+import type { ClaseSrd, RazaSrd, TrasfondoSrd } from "./datos-srd";
+import type { EdicionDnD } from "./ediciones";
+import type { FichaPersonaje } from "./personaje";
 
 export type ModoBonificadorTrasfondo = "reparto" | "parejo";
 

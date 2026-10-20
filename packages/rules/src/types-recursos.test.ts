@@ -10,7 +10,7 @@ import {
   nombreDoteTrasfondo,
   nombreRasgoTrasfondo,
   type Open5eTrasfondo,
-} from "@/lib/open5e/types-recursos";
+} from "./types-recursos";
 
 /** Trasfondo real de srd-2024 (Acolyte), tal como lo confirmó Open5e v2 en vivo. */
 const ACOLITO_2024: Open5eTrasfondo = {

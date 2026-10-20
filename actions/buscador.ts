@@ -7,7 +7,7 @@ import {
   nombreCategoriaObjeto,
   type Open5eHechizo,
   type Open5eObjetoMagico,
-} from "@/lib/open5e/types-recursos";
+} from "@dndficha/rules";
 
 interface ResultadoAgregar {
   ok: boolean;

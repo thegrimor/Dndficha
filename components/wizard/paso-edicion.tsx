@@ -1,6 +1,6 @@
 "use client";
 
-import { EDICIONES_DND, type EdicionDnD } from "@/lib/open5e/ediciones";
+import { EDICIONES_DND, type EdicionDnD } from "@dndficha/rules";
 import { OpcionTarjeta } from "@/components/wizard/opcion-tarjeta";
 import type { DatosWizard } from "@/components/wizard/tipos";
 

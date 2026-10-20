@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { agregarCompetencias, calcularPuntuacionesFinales } from "@/lib/dnd/competencias";
-import { puntosGolpeIniciales, iniciativa, claseArmadura } from "@/lib/dnd/calculos";
-import { CLASES_SRD, RAZAS_SRD } from "@/lib/dnd/datos-srd";
+import { agregarCompetencias, calcularPuntuacionesFinales } from "@dndficha/rules";
+import { puntosGolpeIniciales, iniciativa, claseArmadura } from "@dndficha/rules";
+import { CLASES_SRD, RAZAS_SRD } from "@dndficha/rules";
 import { createClient } from "@/lib/supabase/server";
 import { resolverDoteOrigen, type DatosWizard } from "@/components/wizard/tipos";
-import { fichaVacia } from "@/types/personaje";
+import { fichaVacia } from "@dndficha/rules";
 
 async function usuarioActualOFalla() {
   const supabase = await createClient();

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { FichaCompleta } from "@/components/ficha/ficha-completa";
 import { createClient } from "@/lib/supabase/server";
-import type { Personaje } from "@/types/personaje";
+import type { Personaje } from "@dndficha/rules";
 
 export default async function FichaPublicaPage({
   params,

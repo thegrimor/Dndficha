@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { doteLocalDesdeNombreIngles } from "@/lib/dnd/dotes";
+import { doteLocalDesdeNombreIngles } from "./dotes";
 
 describe("doteLocalDesdeNombreIngles", () => {
   it("empareja un nombre simple", () => {

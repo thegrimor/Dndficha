@@ -1,10 +1,10 @@
 "use client";
 
-import { claseArmadura, iniciativa, modificadorConSigno, puntosGolpeIniciales } from "@/lib/dnd/calculos";
-import { agregarCompetencias, calcularPuntuacionesFinales } from "@/lib/dnd/competencias";
-import { CARACTERISTICAS, HABILIDADES, NOMBRES_CARACTERISTICAS } from "@/lib/dnd/constantes";
-import { CLASES_SRD, RAZAS_SRD } from "@/lib/dnd/datos-srd";
-import { EDICIONES_DND } from "@/lib/open5e/ediciones";
+import { claseArmadura, iniciativa, modificadorConSigno, puntosGolpeIniciales } from "@dndficha/rules";
+import { agregarCompetencias, calcularPuntuacionesFinales } from "@dndficha/rules";
+import { CARACTERISTICAS, HABILIDADES, NOMBRES_CARACTERISTICAS } from "@dndficha/rules";
+import { CLASES_SRD, RAZAS_SRD } from "@dndficha/rules";
+import { EDICIONES_DND } from "@dndficha/rules";
 import { resolverDoteOrigen, type DatosWizard } from "@/components/wizard/tipos";
 
 export function PasoResumen({ datos }: { datos: DatosWizard }) {
