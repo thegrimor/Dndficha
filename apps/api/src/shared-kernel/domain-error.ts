@@ -1,4 +1,4 @@
-export type DomainErrorKind = "validation" | "not_found" | "conflict" | "unauthorized" | "forbidden";
+export type DomainErrorKind = "validation" | "not_found" | "conflict" | "unauthorized" | "forbidden" | "unavailable";
 
 /** Error de negocio: lo lanza el dominio/aplicación y la capa HTTP lo traduce a un status. */
 export class DomainError extends Error {
@@ -18,4 +18,5 @@ export const STATUS_POR_TIPO: Record<DomainErrorKind, number> = {
   conflict: 409,
   unauthorized: 401,
   forbidden: 403,
+  unavailable: 503,
 };

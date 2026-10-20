@@ -6,6 +6,8 @@ const esquema = z.object({
   DATABASE_URL: z.string().min(1),
   // Orígenes permitidos por CORS, separados por comas. Vacío = sin CORS.
   CORS_ORIGINS: z.string().default(""),
+  // Intentos por minuto y por IP en registro/login.
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 

@@ -21,6 +21,8 @@ export interface FichaPersonaje {
     tipo: string;
     fuente: "open5e" | "manual";
     datos?: unknown;
+    cantidad?: number;
+    equipado?: boolean;
   }>;
   spells: {
     slots: Record<number, { total: number; used: number }>;

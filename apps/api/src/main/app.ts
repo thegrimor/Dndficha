@@ -3,17 +3,23 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
+import { ZodError } from "zod";
 import { serializerCompiler, validatorCompiler, hasZodFastifySchemaValidationErrors } from "fastify-type-provider-zod";
 
-import { DomainError, STATUS_POR_TIPO } from "../shared-kernel/domain-error.js";
-import type { Config } from "./config.js";
+import { rutasCatalog } from "../contexts/catalog/interface/http/routes";
+import { rutasCharacterCreation } from "../contexts/character-creation/interface/http/routes";
+import { rutasCharacters } from "../contexts/characters/interface/http/routes";
+import { rutasIdentity } from "../contexts/identity/interface/http/routes";
+import { rutasInventory } from "../contexts/inventory/interface/http/routes";
+import { rutasSharing } from "../contexts/sharing/interface/http/routes";
+import { rutasSpellcasting } from "../contexts/spellcasting/interface/http/routes";
+import { DomainError, STATUS_POR_TIPO } from "../shared-kernel/domain-error";
+import type { Config } from "./config";
+import { crearContainer, type Container } from "./container";
+import { ping, type Db } from "./db";
+import { crearRequireAuth } from "./http/auth";
 
-/** Lo mínimo que la app necesita de la base: permite sustituirla en tests. */
-export interface Database {
-  ping(): Promise<void>;
-}
-
-export async function buildApp(config: Config, db: Database) {
+export async function buildApp(config: Config, db: Db, container: Container = crearContainer(db)) {
   const app = Fastify({
     logger: config.NODE_ENV === "test" ? false : { level: config.LOG_LEVEL },
     trustProxy: true, // detrás del proxy de Railway
@@ -32,6 +38,14 @@ export async function buildApp(config: Config, db: Database) {
     if (error instanceof DomainError) {
       return reply.status(STATUS_POR_TIPO[error.kind]).send({ error: error.code ?? error.kind, message: error.message });
     }
+    // Invariantes de dominio expresadas con zod (ficha, inventario, hechizos).
+    if (error instanceof ZodError) {
+      return reply.status(422).send({
+        error: "validation_error",
+        message: error.issues[0]?.message ?? "Datos inválidos",
+        issues: error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+      });
+    }
     if (hasZodFastifySchemaValidationErrors(error)) {
       return reply.status(400).send({ error: "bad_request", message: "Petición inválida", issues: error.validation });
     }
@@ -45,13 +59,25 @@ export async function buildApp(config: Config, db: Database) {
 
   app.get("/health", async (_request, reply) => {
     try {
-      await db.ping();
+      await ping(db);
       return { status: "ok" };
     } catch (error) {
       app.log.error(error, "healthcheck: la base de datos no responde");
       return reply.status(503).send({ status: "unavailable" });
     }
   });
+
+  const requireAuth = crearRequireAuth(container.auth);
+  await app.register(rutasIdentity(container.auth, requireAuth, {
+      produccion: config.NODE_ENV === "production",
+      intentosPorMinuto: config.AUTH_RATE_LIMIT_MAX,
+    }));
+  await app.register(rutasCatalog(container.catalog, requireAuth));
+  await app.register(rutasCharacters(container.characters, requireAuth));
+  await app.register(rutasCharacterCreation(container.creation, requireAuth));
+  await app.register(rutasInventory(container.inventory, requireAuth));
+  await app.register(rutasSpellcasting(container.spellcasting, requireAuth));
+  await app.register(rutasSharing(container.sharing, container.characters, requireAuth));
 
   return app;
 }

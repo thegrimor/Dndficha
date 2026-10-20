@@ -1,16 +1,12 @@
+import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 
-import { buildApp } from "./app.js";
-import { cargarConfig } from "./config.js";
+import { buildApp } from "./app";
+import { cargarConfig } from "./config";
 
 const config = cargarConfig();
 const pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: 10 });
-
-const app = await buildApp(config, {
-  async ping() {
-    await pool.query("select 1");
-  },
-});
+const app = await buildApp(config, drizzle(pool));
 
 const apagar = async () => {
   await app.close();
