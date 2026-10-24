@@ -7,9 +7,9 @@ import { actualizarPersonaje } from "@/actions/personajes";
 import { ControlesEdicion } from "@/components/ficha/controles-edicion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { bonoConCompetencia, modificadorConSigno } from "@/lib/dnd/calculos";
-import { CARACTERISTICAS, NOMBRES_CARACTERISTICAS } from "@/lib/dnd/constantes";
-import type { FichaPersonaje, Personaje } from "@/types/personaje";
+import { bonoConCompetencia, modificadorConSigno } from "@dndficha/rules";
+import { CARACTERISTICAS, NOMBRES_CARACTERISTICAS } from "@dndficha/rules";
+import type { FichaPersonaje, Personaje } from "@dndficha/rules";
 
 export function BloqueCaracteristicas({
   personaje,

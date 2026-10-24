@@ -7,7 +7,7 @@ import { BloqueHechizos } from "@/components/ficha/bloque-hechizos";
 import { BloqueRasgosCompetencias } from "@/components/ficha/bloque-rasgos-competencias";
 import { EncabezadoFicha } from "@/components/ficha/encabezado-ficha";
 import { Tabs } from "@/components/ui/tabs";
-import type { Personaje } from "@/types/personaje";
+import type { Personaje } from "@dndficha/rules";
 
 export function FichaCompleta({
   personaje,

@@ -5,7 +5,7 @@ import {
   nombreCategoriaObjeto,
   nombreRarezaObjeto,
   type Open5eObjetoMagico,
-} from "@/lib/open5e/types-recursos";
+} from "@dndficha/rules";
 
 interface TarjetaObjetoProps {
   objeto: Open5eObjetoMagico;

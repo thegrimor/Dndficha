@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { FichaCompleta } from "@/components/ficha/ficha-completa";
-import { createClient } from "@/lib/supabase/server";
-import type { Personaje } from "@/types/personaje";
+import { api, ApiError } from "@/lib/api/cliente";
+import type { Personaje } from "@dndficha/rules";
 
 export default async function FichaPublicaPage({
   params,
@@ -10,21 +10,16 @@ export default async function FichaPublicaPage({
   params: Promise<{ shareSlug: string }>;
 }) {
   const { shareSlug } = await params;
-  const supabase = await createClient();
 
-  // No hay sesión de usuario en esta ruta: la RLS ("characters: public read
-  // via slug") permite la lectura solo cuando is_public=true y se conoce el
-  // share_slug exacto.
-  const { data, error } = await supabase
-    .from("characters")
-    .select("*")
-    .eq("share_slug", shareSlug)
-    .eq("is_public", true)
-    .single();
-
-  if (error || !data) notFound();
-
-  const personaje = data as Personaje;
+  // Ruta pública del backend: solo responde si el enlace está activo.
+  const personaje = await api<{ character: Personaje }>(`/public/characters/${encodeURIComponent(shareSlug)}`, {
+    autenticada: false,
+  })
+    .then((r) => r.character)
+    .catch((error) => {
+      if (error instanceof ApiError && error.status === 404) notFound();
+      throw error;
+    });
 
   return (
     <main className="flex min-h-screen flex-col gap-4 p-6">

@@ -15,7 +15,7 @@ import {
   SinResultadosOpen5e,
 } from "@/components/buscador/estado-open5e";
 import { useDebounce } from "@/lib/hooks/use-debounce";
-import { EDICIONES_DND, type EdicionDnD } from "@/lib/open5e/ediciones";
+import { EDICIONES_DND, type EdicionDnD } from "@dndficha/rules";
 import {
   claveEscuela,
   ESCUELAS_HECHIZO,
@@ -23,7 +23,7 @@ import {
   NIVELES_HECHIZO,
   nivelHechizo,
   type Open5eHechizo,
-} from "@/lib/open5e/types-recursos";
+} from "@dndficha/rules";
 
 const TAMANO_LOTE_VISIBLE = 24;
 const TIMEOUT_CLIENTE_MS = 15000;

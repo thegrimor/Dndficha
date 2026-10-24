@@ -3,11 +3,11 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { HABILIDADES, NOMBRES_CARACTERISTICAS, type Caracteristica } from "@/lib/dnd/constantes";
-import { IDIOMAS_DISPONIBLES, RAZAS_SRD } from "@/lib/dnd/datos-srd";
-import { DOTES_SRD, doteLocalDesdeNombreIngles } from "@/lib/dnd/dotes";
-import { trasfondoDesdeOpen5e } from "@/lib/dnd/trasfondos-open5e";
-import type { BonificadorTrasfondoElegido } from "@/lib/dnd/competencias";
+import { HABILIDADES, NOMBRES_CARACTERISTICAS, type Caracteristica } from "@dndficha/rules";
+import { IDIOMAS_DISPONIBLES, RAZAS_SRD } from "@dndficha/rules";
+import { DOTES_SRD, doteLocalDesdeNombreIngles } from "@dndficha/rules";
+import { trasfondoDesdeOpen5e } from "@dndficha/rules";
+import type { BonificadorTrasfondoElegido } from "@dndficha/rules";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import {
 } from "@/components/buscador/estado-open5e";
 import { OpcionTarjeta } from "@/components/wizard/opcion-tarjeta";
 import type { DatosWizard, DoteOrigenElegida } from "@/components/wizard/tipos";
-import { identificadorOpen5e, nombreDoteTrasfondo, type Open5eTrasfondo } from "@/lib/open5e/types-recursos";
+import { identificadorOpen5e, nombreDoteTrasfondo, type Open5eTrasfondo } from "@dndficha/rules";
 
 const BONIFICADOR_INICIAL: BonificadorTrasfondoElegido = { modo: "reparto", mas2: null, mas1: null };
 const DOTE_INICIAL: DoteOrigenElegida = { modo: "catalogo", doteElegida: null, manualNombre: "", manualDescripcion: "" };

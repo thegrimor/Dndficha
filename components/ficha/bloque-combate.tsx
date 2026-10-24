@@ -7,7 +7,7 @@ import { actualizarPersonaje } from "@/actions/personajes";
 import { ControlesEdicion } from "@/components/ficha/controles-edicion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import type { FichaPersonaje, Personaje } from "@/types/personaje";
+import type { FichaPersonaje, Personaje } from "@dndficha/rules";
 
 type DatosCombate = FichaPersonaje["combat"];
 

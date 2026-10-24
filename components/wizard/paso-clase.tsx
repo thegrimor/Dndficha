@@ -1,7 +1,7 @@
 "use client";
 
-import { HABILIDADES, NOMBRES_CARACTERISTICAS } from "@/lib/dnd/constantes";
-import { CLASES_SRD } from "@/lib/dnd/datos-srd";
+import { HABILIDADES, NOMBRES_CARACTERISTICAS } from "@dndficha/rules";
+import { CLASES_SRD } from "@dndficha/rules";
 import { cn } from "@/lib/utils";
 import { OpcionTarjeta } from "@/components/wizard/opcion-tarjeta";
 import type { DatosWizard } from "@/components/wizard/tipos";

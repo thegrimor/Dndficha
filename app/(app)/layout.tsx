@@ -1,20 +1,17 @@
 import Link from "next/link";
 import { Sword } from "lucide-react";
 
-import { createClient } from "@/lib/supabase/server";
+import { usuarioActual } from "@/lib/api/usuario";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { PersonajeActivoProvider } from "@/components/providers/personaje-activo-provider";
 import { SelectorPersonajeActivo } from "@/components/nav/selector-personaje-activo";
 import { MenuUsuario } from "@/components/nav/menu-usuario";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await usuarioActual();
 
-  const email = user?.email ?? "";
-  const nombre = (user?.user_metadata?.username as string | undefined) || email || "Aventurero";
+  const email = user.email;
+  const nombre = user.username || email || "Aventurero";
 
   return (
     <QueryProvider>

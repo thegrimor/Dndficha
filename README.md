@@ -1,79 +1,91 @@
 # Dndficha
 
-Aplicación web de fichas de personaje de D&D 5e, con guardado en la nube y un
-buscador integrado de hechizos/objetos del SRD (vía [Open5e](https://open5e.com)).
+Aplicación web de fichas de personaje de D&D 5e, con cuentas, guardado en la nube,
+asistente de creación y un buscador integrado del SRD (vía [Open5e](https://open5e.com)).
 
-## Stack
+## Arquitectura
 
-- [Next.js](https://nextjs.org) 16 (App Router) + TypeScript
-- Tailwind CSS 4 (componentes propios estilo shadcn en `components/ui/`)
-- [Supabase](https://supabase.com) (Auth + Postgres) para cuentas y guardado de fichas
-- [Open5e API](https://open5e.com/api-docs) como fuente del contenido SRD (hechizos, objetos, razas, clases...)
-- react-hook-form + zod, TanStack Query, Vitest
+Monorepo con npm workspaces:
 
-## Setup
+| Ruta | Qué es |
+| --- | --- |
+| `/` (raíz) | Front: Next.js 16 (App Router), Tailwind 4, TanStack Query. Desplegado en Netlify. |
+| `apps/api` | Backend: Fastify + TypeScript + Drizzle sobre Postgres, organizado por bounded contexts (DDD). Desplegado en Railway. |
+| `packages/rules` | Reglas puras de D&D (cálculos, datos SRD, tipos de la ficha y del wizard) compartidas por front y API. |
 
-1. Instalar dependencias:
+El navegador **nunca habla con la API**: Server Actions y Route Handlers de Next la llaman
+desde el servidor (`lib/api/cliente.ts`), reenviando el token de sesión que vive en una
+cookie `httpOnly` (`sid`) del propio front. No hay CORS ni cookies entre sitios.
 
-   ```bash
-   npm install
-   ```
+### Bounded contexts (`apps/api/src/contexts/*`)
 
-2. Crear un proyecto en [Supabase](https://supabase.com/dashboard), copiar
-   `.env.local.example` a `.env.local` y completar `NEXT_PUBLIC_SUPABASE_URL`
-   y `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Project Settings → API).
+Cada uno tiene `domain/`, `application/`, `infrastructure/` e `interface/http/`.
 
-3. Aplicar las migraciones de `supabase/migrations/` (crean las tablas
-   `profiles`/`characters` y sus políticas de RLS) desde el SQL Editor del
-   proyecto de Supabase, o con la Supabase CLI si la tienes instalada:
+- **identity**: registro, login y sesiones (token opaco, solo se guarda su SHA-256; contraseñas con argon2id).
+- **catalog**: anti-corruption layer sobre Open5e con caché persistente en Postgres (sirve la copia caducada si Open5e cae).
+- **characters**: aggregate `Character` (identidad + núcleo de la ficha) y ensamblado de la ficha completa.
+- **character-creation**: validación de las elecciones del wizard contra el SRD y construcción de la ficha de nivel 1.
+- **inventory**, **spellcasting** (libro de hechizos y espacios de conjuro), **sharing** (enlace público).
 
-   ```bash
-   supabase link --project-ref <tu-project-ref>
-   supabase db push
-   ```
+Los contextos se comunican por puertos y por eventos de dominio (p. ej. `CharacterDeleted` limpia
+inventario, hechizos y enlace). La composición está en `apps/api/src/main/container.ts`.
+Autorización: cada caso de uso comprueba que el personaje es del usuario (404 si no, sin revelar que existe).
 
-4. Levantar el servidor de desarrollo:
+## Desarrollo local
 
-   ```bash
-   npm run dev
-   ```
+```bash
+npm install
 
-   Abrir [http://localhost:3000](http://localhost:3000).
+# 1. Postgres
+docker compose -f apps/api/docker-compose.yml up -d
+cp apps/api/.env.example apps/api/.env
+npm run db:migrate -w @dndficha/api
+
+# 2. API (http://localhost:3001)
+npm run dev -w @dndficha/api
+
+# 3. Front (http://localhost:3000)
+cp .env.local.example .env.local      # API_URL=http://localhost:3001
+npm run dev
+```
 
 ## Scripts
 
-- `npm run dev` — servidor de desarrollo
-- `npm run build` — build de producción
-- `npm run lint` — ESLint
-- `npm test` — tests unitarios (Vitest), por ahora cubren `lib/dnd/calculos.ts`
+- `npm test`: tests de todos los workspaces. Los de la API usan PGlite (Postgres real en WASM), sin Docker.
+- `npm run lint` / `npx tsc --noEmit`: front. `npm run typecheck -w @dndficha/api`: API.
+- `npm run db:generate -w @dndficha/api`: genera una migración Drizzle tras cambiar un `schema.ts`.
 
-## Notas de esta implementación inicial
+## Despliegue
 
-- **`proxy.ts`**: Next.js 16 renombró `middleware.ts` a `proxy.ts` (la función
-  pasó de `middleware` a `proxy`). La lógica de sesión vive en
-  `lib/supabase/middleware.ts` y se invoca desde `proxy.ts` en la raíz.
-- **shadcn/ui**: el entorno donde se generó este scaffold no tenía acceso de
-  red a `ui.shadcn.com`, así que los componentes en `components/ui/` están
-  escritos a mano siguiendo las mismas convenciones (cva + `cn()`), sin pasar
-  por el CLI. Se puede correr `npx shadcn@latest add <componente>` más
-  adelante en un entorno con acceso a internet para traer componentes
-  adicionales sin romper lo existente.
-- **Open5e**: por la misma razón, los endpoints en `lib/open5e/endpoints.ts`
-  no se pudieron verificar en vivo contra `api.open5e.com`. Antes de confiar
-  en ellos, comprobar el contrato real en https://open5e.com/api-docs.
+**API en Railway**: crear un servicio desde este repo (sin Root Directory) y un servicio Postgres.
+`railway.json` ya define el Dockerfile (`apps/api/Dockerfile`), el healthcheck (`/health`) y el
+pre-deploy `node dist/migrate.js`. Variables del servicio API:
 
-## Estructura del proyecto
+- `DATABASE_URL`: referencia al Postgres de Railway (URL de red privada).
+- `NODE_ENV=production`
+- `CORS_ORIGINS`: vacío si solo la llama el servidor de Next (lo habitual).
+- `ADMIN_TOKEN` y `WEB_URL`: para la recuperación de contraseñas (ver Notas).
 
-Ver el plan completo de fases en el historial de la sesión de planificación;
-resumen de carpetas:
+**Front en Netlify**: variable `API_URL` con la URL pública del servicio API de Railway.
 
-- `app/(auth)` — login, registro, callback de confirmación
-- `app/(app)` — rutas protegidas: listado/CRUD de personajes, buscador SRD
-- `app/api/open5e/*` — proxy con cache hacia la API de Open5e
-- `components/ficha` — bloques de la hoja de personaje
-- `components/wizard` — pasos del asistente de creación (Fase 4, pendiente)
-- `components/buscador` — buscador de hechizos/objetos (Fase 5, pendiente)
-- `lib/dnd` — fórmulas puras (modificadores, CA, competencia, etc.)
-- `lib/supabase`, `lib/open5e` — clientes e integraciones
-- `actions/` — Server Actions (auth, CRUD de personajes)
-- `supabase/migrations` — esquema SQL y políticas RLS
+## Notas
+
+- Next.js 16 renombró `middleware.ts` a `proxy.ts`. Aquí solo comprueba que exista la cookie de
+  sesión; la validez real la decide la API.
+- Open5e: la API filtra mal por `level`/`school`/`type`, así que el catálogo se baja completo (una
+  vez por edición y recurso, cacheado) y se filtra en el cliente. Los monstruos son la excepción.
+- **Recuperación de contraseña sin correo** (pensada para pocos usuarios de confianza): si alguien olvida
+  la suya, el administrador genera un enlace de un solo uso (24 h) y se lo pasa por el canal que quiera:
+
+  ```bash
+  curl -X POST "$API_URL/admin/reset-tokens" \
+    -H "x-admin-token: $ADMIN_TOKEN" -H "content-type: application/json" \
+    -d '{"email":"amigo@example.com"}'
+  # -> { "url": "https://tu-front/restablecer?token=...", "expiresAt": "..." }
+  ```
+
+  El usuario abre el enlace, elige la contraseña nueva y se cierran todas sus sesiones. Un enlace nuevo
+  anula el anterior. La ruta solo existe si el servicio API tiene `ADMIN_TOKEN` (≥ 32 caracteres, p. ej.
+  `openssl rand -hex 32`); `WEB_URL` hace que la respuesta traiga el enlace completo.
+- Sin confirmación de correo al registrarse: cualquiera que llegue a la página de registro puede crear
+  cuenta. Si no quieres eso, avísame y se añade un código de invitación.

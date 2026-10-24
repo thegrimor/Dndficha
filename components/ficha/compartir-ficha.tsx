@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { activarCompartir, desactivarCompartir } from "@/actions/compartir";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Personaje } from "@/types/personaje";
+import type { Personaje } from "@dndficha/rules";
 
 export function CompartirFicha({
   personaje,

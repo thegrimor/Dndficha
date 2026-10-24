@@ -5,7 +5,7 @@ import {
   nombreEscuela,
   nombreNivelHechizo,
   type Open5eHechizo,
-} from "@/lib/open5e/types-recursos";
+} from "@dndficha/rules";
 
 interface TarjetaHechizoProps {
   hechizo: Open5eHechizo;

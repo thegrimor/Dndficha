@@ -9,7 +9,7 @@ import { ControlesEdicion } from "@/components/ficha/controles-edicion";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import type { FichaPersonaje, Personaje } from "@/types/personaje";
+import type { FichaPersonaje, Personaje } from "@dndficha/rules";
 
 type Hechizo = FichaPersonaje["spells"]["known"][number];
 

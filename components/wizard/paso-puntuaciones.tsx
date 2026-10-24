@@ -1,7 +1,7 @@
 "use client";
 
-import { CARACTERISTICAS, NOMBRES_CARACTERISTICAS, type Caracteristica } from "@/lib/dnd/constantes";
-import { modificadorConSigno } from "@/lib/dnd/calculos";
+import { CARACTERISTICAS, NOMBRES_CARACTERISTICAS, type Caracteristica } from "@dndficha/rules";
+import { modificadorConSigno } from "@dndficha/rules";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { ARRAY_ESTANDAR, type DatosWizard, type MetodoPuntuaciones } from "@/components/wizard/tipos";

@@ -12,7 +12,7 @@ import {
   SinResultadosOpen5e,
 } from "@/components/buscador/estado-open5e";
 import { useDebounce } from "@/lib/hooks/use-debounce";
-import type { Open5eMonstruo } from "@/lib/open5e/types-recursos";
+import type { Open5eMonstruo } from "@dndficha/rules";
 import type { RespuestaPaginadaOpen5e } from "@/lib/open5e/types";
 
 const LIMITE_POR_PAGINA = 20;
