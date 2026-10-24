@@ -71,6 +71,8 @@ export async function buildApp(config: Config, db: Db, container: Container = cr
   await app.register(rutasIdentity(container.auth, requireAuth, {
       produccion: config.NODE_ENV === "production",
       intentosPorMinuto: config.AUTH_RATE_LIMIT_MAX,
+      adminToken: config.ADMIN_TOKEN,
+      webUrl: config.WEB_URL,
     }));
   await app.register(rutasCatalog(container.catalog, requireAuth));
   await app.register(rutasCharacters(container.characters, requireAuth));

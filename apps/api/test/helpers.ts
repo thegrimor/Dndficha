@@ -44,12 +44,12 @@ const hasherRapido: PasswordHasher = {
   verify: async (hash, plain) => hash === `hash:${plain}`,
 };
 
-export async function crearApp(opciones: { gateway?: Open5eGateway } = {}) {
+export async function crearApp(opciones: { gateway?: Open5eGateway; env?: Record<string, string> } = {}) {
   const pg = new PGlite();
   const db = drizzle(pg) as unknown as Db;
   await migrate(drizzle(pg), { migrationsFolder: "drizzle" });
 
-  const config = cargarConfig({ NODE_ENV: "test", DATABASE_URL: "postgres://x", AUTH_RATE_LIMIT_MAX: "1000" });
+  const config = cargarConfig({ NODE_ENV: "test", DATABASE_URL: "postgres://x", AUTH_RATE_LIMIT_MAX: "1000", ...opciones.env });
   const container = crearContainer(db, { gateway: opciones.gateway ?? gatewayFalso(), hasher: hasherRapido });
   const app = await buildApp(config, db, container);
   return { app, container, cerrar: async () => { await app.close(); await pg.close(); } };

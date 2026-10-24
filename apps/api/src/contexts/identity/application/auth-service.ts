@@ -6,12 +6,14 @@ import {
   validarContrasena,
   validarUsername,
   type PasswordHasher,
+  type ResetTokenRepository,
   type SessionRepository,
   type User,
   type UserRepository,
 } from "../domain/user";
 
 export const DURACION_SESION_MS = 30 * 24 * 60 * 60 * 1000;
+export const DURACION_ENLACE_RESTABLECER_MS = 24 * 60 * 60 * 1000;
 
 export interface SesionIniciada {
   user: User;
@@ -29,6 +31,7 @@ export class AuthService {
     private users: UserRepository,
     private sessions: SessionRepository,
     private hasher: PasswordHasher,
+    private resetTokens: ResetTokenRepository,
     private now: () => Date = () => new Date()
   ) {
     this.dummyHash = hasher.hash("dummy-password-for-timing");
@@ -65,6 +68,31 @@ export class AuthService {
     const session = await this.sessions.findActive(hashToken(token), this.now());
     if (!session) return null;
     return this.users.findById(session.userId);
+  }
+
+  /**
+   * Recuperación sin correo: el administrador genera un enlace de un solo uso
+   * (24 h) para un usuario y se lo hace llegar por su cuenta. Un enlace nuevo
+   * anula el anterior.
+   */
+  async crearEnlaceRestablecer(email: string): Promise<{ token: string; expiresAt: Date }> {
+    const user = await this.users.findByEmail(email.trim().toLowerCase());
+    if (!user) throw new DomainError("not_found", "No existe ningún usuario con ese correo", "user_not_found");
+    const token = randomBytes(32).toString("base64url");
+    const expiresAt = new Date(this.now().getTime() + DURACION_ENLACE_RESTABLECER_MS);
+    await this.resetTokens.replaceForUser(user.id, hashToken(token), expiresAt);
+    return { token, expiresAt };
+  }
+
+  /** Fija la contraseña nueva con un enlace válido y cierra todas las sesiones abiertas del usuario. */
+  async restablecerContrasena(token: string, password: string): Promise<void> {
+    validarContrasena(password);
+    const userId = await this.resetTokens.consume(hashToken(token), this.now());
+    if (!userId) {
+      throw new DomainError("validation", "El enlace no es válido o ha caducado", "invalid_reset_token");
+    }
+    await this.users.updatePassword(userId, await this.hasher.hash(password));
+    await this.sessions.deleteAllForUser(userId);
   }
 
   private async abrirSesion(user: User): Promise<SesionIniciada> {

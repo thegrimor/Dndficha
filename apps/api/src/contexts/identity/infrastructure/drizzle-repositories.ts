@@ -1,16 +1,20 @@
 import { hash, verify } from "@node-rs/argon2";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 
 import type { Db } from "../../../main/db";
 import { DomainError } from "../../../shared-kernel/domain-error";
-import type { PasswordHasher, Session, SessionRepository, User, UserRepository } from "../domain/user";
-import { sessions, users } from "./schema";
+import type { PasswordHasher, ResetTokenRepository, Session, SessionRepository, User, UserRepository } from "../domain/user";
+import { passwordResetTokens, sessions, users } from "./schema";
 
 const esViolacionUnica = (error: unknown) =>
   typeof error === "object" && error !== null && (error as { code?: string }).code === "23505";
 
 export class DrizzleUserRepository implements UserRepository {
   constructor(private db: Db) {}
+
+  async updatePassword(userId: string, passwordHash: string) {
+    await this.db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+  }
 
   async findByEmail(email: string): Promise<User | null> {
     const [fila] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
@@ -32,6 +36,28 @@ export class DrizzleUserRepository implements UserRepository {
       }
       throw error;
     }
+  }
+}
+
+export class DrizzleResetTokenRepository implements ResetTokenRepository {
+  constructor(private db: Db) {}
+
+  async replaceForUser(userId: string, tokenId: string, expiresAt: Date) {
+    await this.db.transaction(async (tx) => {
+      await tx.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+      await tx.insert(passwordResetTokens).values({ id: tokenId, userId, expiresAt });
+    });
+  }
+
+  async consume(tokenId: string, now: Date) {
+    const [fila] = await this.db
+      .update(passwordResetTokens)
+      .set({ usedAt: now })
+      .where(
+        and(eq(passwordResetTokens.id, tokenId), isNull(passwordResetTokens.usedAt), gt(passwordResetTokens.expiresAt, now))
+      )
+      .returning({ userId: passwordResetTokens.userId });
+    return fila?.userId ?? null;
   }
 }
 

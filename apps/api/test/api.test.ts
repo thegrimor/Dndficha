@@ -61,6 +61,64 @@ describe("identity", () => {
   });
 });
 
+describe("recuperación de contraseña (sin correo)", () => {
+  const ADMIN = "a".repeat(40);
+  let admin: Awaited<ReturnType<typeof crearApp>>;
+  beforeAll(async () => {
+    admin = await crearApp({ env: { ADMIN_TOKEN: ADMIN, WEB_URL: "https://dndficha.example" } });
+  });
+  afterAll(() => admin.cerrar());
+
+  const registrarEn = (c: typeof admin, email: string) =>
+    c.app.inject({ method: "POST", url: "/auth/register", payload: { email, username: "amigo", password: "contraseña-vieja" } });
+  const generar = (c: typeof admin, email: string, token = ADMIN) =>
+    c.app.inject({ method: "POST", url: "/admin/reset-tokens", headers: { "x-admin-token": token }, payload: { email } });
+
+  it("el admin genera un enlace de un solo uso y el usuario fija una contraseña nueva", async () => {
+    const reg = await registrarEn(admin, "amigo@example.com");
+    const sesionVieja = reg.json().token;
+
+    const res = await generar(admin, "Amigo@Example.com");
+    expect(res.statusCode).toBe(200);
+    const { token, url } = res.json();
+    expect(url).toBe(`https://dndficha.example/restablecer?token=${token}`);
+
+    const reset = (password: string) => admin.app.inject({ method: "POST", url: "/auth/reset-password", payload: { token, password } });
+    expect((await reset("corta")).statusCode).toBe(422);
+    expect((await reset("contraseña-nueva-1")).statusCode).toBe(204);
+    // un solo uso
+    expect((await reset("otra-contraseña-2")).statusCode).toBe(422);
+
+    // la contraseña vieja ya no vale, la nueva sí, y las sesiones anteriores se cierran
+    const login = (password: string) => admin.app.inject({ method: "POST", url: "/auth/login", payload: { email: "amigo@example.com", password } });
+    expect((await login("contraseña-vieja")).statusCode).toBe(401);
+    expect((await login("contraseña-nueva-1")).statusCode).toBe(200);
+    expect((await admin.app.inject({ method: "GET", url: "/auth/me", headers: { authorization: `Bearer ${sesionVieja}` } })).statusCode).toBe(401);
+  });
+
+  it("un enlace nuevo anula el anterior y los enlaces caducan", async () => {
+    await registrarEn(admin, "otro@example.com");
+    const primero = (await generar(admin, "otro@example.com")).json().token;
+    const segundo = (await generar(admin, "otro@example.com")).json().token;
+    const reset = (token: string) => admin.app.inject({ method: "POST", url: "/auth/reset-password", payload: { token, password: "contraseña-nueva-1" } });
+
+    expect((await reset(primero)).statusCode).toBe(422);
+    expect((await reset("inventado")).statusCode).toBe(422);
+    expect((await reset(segundo)).statusCode).toBe(204);
+  });
+
+  it("protege la ruta de administración", async () => {
+    expect((await generar(admin, "amigo@example.com", "b".repeat(40))).statusCode).toBe(403);
+    expect((await generar(admin, "amigo@example.com", "")).statusCode).toBe(403);
+    expect((await generar(admin, "nadie@example.com")).statusCode).toBe(404);
+  });
+
+  it("la ruta de administración no existe sin ADMIN_TOKEN", async () => {
+    const res = await inyectar({ method: "POST", url: "/admin/reset-tokens", headers: { "x-admin-token": ADMIN }, payload: { email: "x@example.com" } });
+    expect(res.statusCode).toBe(404);
+  });
+});
+
 describe("characters", () => {
   it("crea, edita la ficha completa y la lee de vuelta", async () => {
     const { auth } = await registrar(ctx.app);

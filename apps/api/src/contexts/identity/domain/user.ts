@@ -20,6 +20,14 @@ export interface UserRepository {
   findById(id: string): Promise<User | null>;
   /** Lanza `DomainError` conflict si el correo ya existe. */
   create(data: { email: string; username: string; passwordHash: string }): Promise<User>;
+  updatePassword(userId: string, passwordHash: string): Promise<void>;
+}
+
+export interface ResetTokenRepository {
+  /** Sustituye cualquier enlace anterior del usuario: solo hay uno válido a la vez. */
+  replaceForUser(userId: string, tokenId: string, expiresAt: Date): Promise<void>;
+  /** Marca el enlace como usado de forma atómica; devuelve el usuario, o `null` si no existe, caducó o ya se usó. */
+  consume(tokenId: string, now: Date): Promise<string | null>;
 }
 
 export interface SessionRepository {

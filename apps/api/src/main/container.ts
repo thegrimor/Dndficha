@@ -1,5 +1,5 @@
 import { AuthService } from "../contexts/identity/application/auth-service";
-import { Argon2Hasher, DrizzleSessionRepository, DrizzleUserRepository } from "../contexts/identity/infrastructure/drizzle-repositories";
+import { Argon2Hasher, DrizzleResetTokenRepository, DrizzleSessionRepository, DrizzleUserRepository } from "../contexts/identity/infrastructure/drizzle-repositories";
 import { CatalogService } from "../contexts/catalog/application/catalog-service";
 import { DrizzleCatalogCache } from "../contexts/catalog/infrastructure/drizzle-cache";
 import { Open5eHttpGateway } from "../contexts/catalog/infrastructure/open5e-gateway";
@@ -30,7 +30,8 @@ export function crearContainer(db: Db, overrides: Overrides = {}) {
   const auth = new AuthService(
     new DrizzleUserRepository(db),
     new DrizzleSessionRepository(db),
-    overrides.hasher ?? new Argon2Hasher()
+    overrides.hasher ?? new Argon2Hasher(),
+    new DrizzleResetTokenRepository(db)
   );
 
   const catalog = new CatalogService(overrides.gateway ?? new Open5eHttpGateway(), new DrizzleCatalogCache(db));

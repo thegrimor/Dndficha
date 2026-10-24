@@ -64,6 +64,7 @@ pre-deploy `node dist/migrate.js`. Variables del servicio API:
 - `DATABASE_URL`: referencia al Postgres de Railway (URL de red privada).
 - `NODE_ENV=production`
 - `CORS_ORIGINS`: vacío si solo la llama el servidor de Next (lo habitual).
+- `ADMIN_TOKEN` y `WEB_URL`: para la recuperación de contraseñas (ver Notas).
 
 **Front en Netlify**: variable `API_URL` con la URL pública del servicio API de Railway.
 
@@ -73,4 +74,18 @@ pre-deploy `node dist/migrate.js`. Variables del servicio API:
   sesión; la validez real la decide la API.
 - Open5e: la API filtra mal por `level`/`school`/`type`, así que el catálogo se baja completo (una
   vez por edición y recurso, cacheado) y se filtra en el cliente. Los monstruos son la excepción.
-- Pendiente: confirmación de correo y recuperación de contraseña (requieren un proveedor de correo).
+- **Recuperación de contraseña sin correo** (pensada para pocos usuarios de confianza): si alguien olvida
+  la suya, el administrador genera un enlace de un solo uso (24 h) y se lo pasa por el canal que quiera:
+
+  ```bash
+  curl -X POST "$API_URL/admin/reset-tokens" \
+    -H "x-admin-token: $ADMIN_TOKEN" -H "content-type: application/json" \
+    -d '{"email":"amigo@example.com"}'
+  # -> { "url": "https://tu-front/restablecer?token=...", "expiresAt": "..." }
+  ```
+
+  El usuario abre el enlace, elige la contraseña nueva y se cierran todas sus sesiones. Un enlace nuevo
+  anula el anterior. La ruta solo existe si el servicio API tiene `ADMIN_TOKEN` (≥ 32 caracteres, p. ej.
+  `openssl rand -hex 32`); `WEB_URL` hace que la respuesta traiga el enlace completo.
+- Sin confirmación de correo al registrarse: cualquiera que llegue a la página de registro puede crear
+  cuenta. Si no quieres eso, avísame y se añade un código de invitación.

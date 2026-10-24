@@ -21,3 +21,19 @@ export const sessions = pgTable(
   },
   (t) => [index("sessions_user_id_idx").on(t.userId)]
 );
+
+/** Enlaces de un solo uso para fijar una contraseña nueva, generados por el administrador. */
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    /** SHA-256 del token entregado. */
+    id: text("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("password_reset_tokens_user_id_idx").on(t.userId)]
+);

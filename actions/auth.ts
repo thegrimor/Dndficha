@@ -51,3 +51,21 @@ export async function cerrarSesion() {
   await borrarSesion();
   redirect("/login");
 }
+
+/** Fija una contraseña nueva con el enlace de un solo uso que entrega el administrador. */
+export async function restablecerContrasena(formData: FormData) {
+  const token = String(formData.get("token") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const confirmacion = String(formData.get("confirmacion") ?? "");
+  const volver = (mensaje: string) =>
+    redirect(`/restablecer?token=${encodeURIComponent(token)}&error=${encodeURIComponent(mensaje)}`);
+
+  if (password !== confirmacion) volver("Las contraseñas no coinciden.");
+
+  try {
+    await api("/auth/reset-password", { method: "POST", body: { token, password }, autenticada: false });
+  } catch (error) {
+    volver(error instanceof ApiError ? error.message : "No se pudo cambiar la contraseña.");
+  }
+  redirect("/login?ok=1");
+}

@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; ok?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, ok } = await searchParams;
 
   return (
     <div className="flex flex-1 items-center justify-center p-4">
@@ -32,10 +32,14 @@ export default async function LoginPage({
               </label>
               <Input id="password" name="password" type="password" required />
             </div>
+            {ok && <p className="text-sm text-primary">Contraseña cambiada. Ya puedes iniciar sesión.</p>}
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit">Entrar</Button>
           </form>
           <p className="mt-4 text-sm text-muted-foreground">
+            ¿Olvidaste la contraseña? Pídele a quien administra la app un enlace para crear una nueva.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
             ¿No tienes cuenta?{" "}
             <Link href="/registro" className="text-primary underline">
               Regístrate
