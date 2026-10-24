@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { iniciarSesion } from "@/actions/auth";
+import { signIn } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ export default async function LoginPage({
           <CardTitle>Iniciar sesión</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={iniciarSesion} className="flex flex-col gap-4">
+          <form action={signIn} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="email" className="text-sm font-medium">
                 Correo

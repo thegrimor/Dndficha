@@ -1,6 +1,6 @@
 import { jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
-/** Caché persistente de los catálogos de Open5e (una fila por recurso/edición). */
+/** Persistent cache of the Open5e catalogs (one row per resource/edition). */
 export const catalogCache = pgTable("catalog_cache", {
   key: text("key").primaryKey(),
   payload: jsonb("payload").notNull(),

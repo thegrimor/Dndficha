@@ -1,21 +1,21 @@
 import Link from "next/link";
 import { Sword } from "lucide-react";
 
-import { usuarioActual } from "@/lib/api/usuario";
+import { currentUser } from "@/lib/api/user";
 import { QueryProvider } from "@/components/providers/query-provider";
-import { PersonajeActivoProvider } from "@/components/providers/personaje-activo-provider";
-import { SelectorPersonajeActivo } from "@/components/nav/selector-personaje-activo";
-import { MenuUsuario } from "@/components/nav/menu-usuario";
+import { ActiveCharacterProvider } from "@/components/providers/active-character-provider";
+import { ActiveCharacterSelector } from "@/components/nav/active-character-selector";
+import { UserMenu } from "@/components/nav/user-menu";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await usuarioActual();
+  const user = await currentUser();
 
   const email = user.email;
-  const nombre = user.username || email || "Aventurero";
+  const name = user.username || email || "Aventurero";
 
   return (
     <QueryProvider>
-      <PersonajeActivoProvider>
+      <ActiveCharacterProvider>
         <div className="flex min-h-screen flex-col">
           <header className="sticky top-0 z-30 flex flex-col gap-3 border-b border-border bg-background/80 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex items-center justify-between gap-4">
@@ -30,14 +30,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 <Link href="/buscador/objetos" className="text-muted-foreground transition-colors hover:text-foreground">
                   Objetos
                 </Link>
-                <MenuUsuario nombre={nombre} email={email} />
+                <UserMenu name={name} email={email} />
               </nav>
             </div>
-            <SelectorPersonajeActivo />
+            <ActiveCharacterSelector />
           </header>
           <main className="flex flex-1 flex-col p-6">{children}</main>
         </div>
-      </PersonajeActivoProvider>
+      </ActiveCharacterProvider>
     </QueryProvider>
   );
 }

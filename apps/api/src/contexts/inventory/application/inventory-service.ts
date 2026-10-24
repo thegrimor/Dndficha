@@ -14,39 +14,39 @@ export class InventoryService {
     return this.repo.listMany(characterIds);
   }
 
-  /** Sustituye todo el inventario; lo usa la edición completa de la ficha. */
+  /** Replaces the whole inventory; used when the full sheet is edited. */
   async replace(characterId: string, items: unknown[]): Promise<void> {
-    const validos = z.array(itemSchema).max(MAX_ITEMS).parse(items);
-    await this.repo.replace(characterId, validos);
+    const valid = z.array(itemSchema).max(MAX_ITEMS).parse(items);
+    await this.repo.replace(characterId, valid);
   }
 
-  async listar(userId: string, characterId: string): Promise<InventoryItem[]> {
+  async list(userId: string, characterId: string): Promise<InventoryItem[]> {
     await this.access.assertOwner(userId, characterId);
     return (await this.repo.listMany([characterId])).get(characterId) ?? [];
   }
 
-  async agregar(userId: string, characterId: string, item: unknown): Promise<InventoryItem[]> {
+  async add(userId: string, characterId: string, item: unknown): Promise<InventoryItem[]> {
     await this.access.assertOwner(userId, characterId);
-    const nuevo = itemSchema.parse(item);
-    const actuales = (await this.repo.listMany([characterId])).get(characterId) ?? [];
-    if (actuales.some((i) => i.slug === nuevo.slug)) {
+    const incoming = itemSchema.parse(item);
+    const existing = (await this.repo.listMany([characterId])).get(characterId) ?? [];
+    if (existing.some((i) => i.slug === incoming.slug)) {
       throw new DomainError("conflict", "Ese objeto ya está en la ficha", "item_already_present");
     }
-    if (actuales.length >= MAX_ITEMS) {
+    if (existing.length >= MAX_ITEMS) {
       throw new DomainError("validation", "El inventario está lleno", "inventory_full");
     }
-    const todos = [...actuales, nuevo];
-    await this.repo.replace(characterId, todos);
-    return todos;
+    const all = [...existing, incoming];
+    await this.repo.replace(characterId, all);
+    return all;
   }
 
-  async quitar(userId: string, characterId: string, slug: string): Promise<void> {
+  async remove(userId: string, characterId: string, slug: string): Promise<void> {
     await this.access.assertOwner(userId, characterId);
-    const actuales = (await this.repo.listMany([characterId])).get(characterId) ?? [];
-    await this.repo.replace(characterId, actuales.filter((i) => i.slug !== slug));
+    const existing = (await this.repo.listMany([characterId])).get(characterId) ?? [];
+    await this.repo.replace(characterId, existing.filter((i) => i.slug !== slug));
   }
 
-  eliminarDe(characterId: string) {
+  deleteFor(characterId: string) {
     return this.repo.deleteAll(characterId);
   }
 }

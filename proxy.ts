@@ -1,14 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const RUTAS_PROTEGIDAS = ["/personajes", "/buscador", "/perfil"];
+const PROTECTED_ROUTES = ["/personajes", "/buscador", "/perfil"];
 
-// Next.js 16 renombró `middleware.ts` a `proxy.ts`. Aquí solo se comprueba que
-// exista la cookie de sesión para redirigir rápido a /login; la validez real del
-// token la decide el backend (una sesión caducada recibe 401 y redirige igualmente).
+// Next.js 16 renamed `middleware.ts` to `proxy.ts`. Here it is only checked that
+// the session cookie exists to redirect quickly to /login; the real validity of the
+// token is decided by the backend (an expired session gets a 401 and redirects anyway).
 export function proxy(request: NextRequest) {
-  const protegida = RUTAS_PROTEGIDAS.some((ruta) => request.nextUrl.pathname.startsWith(ruta));
+  const isProtected = PROTECTED_ROUTES.some((route) => request.nextUrl.pathname.startsWith(route));
 
-  if (protegida && !request.cookies.has("sid")) {
+  if (isProtected && !request.cookies.has("sid")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";

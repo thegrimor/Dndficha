@@ -1,19 +1,19 @@
 import { notFound } from "next/navigation";
 
-import { FichaCompleta } from "@/components/ficha/ficha-completa";
-import { api, ApiError } from "@/lib/api/cliente";
-import type { Personaje } from "@dndficha/rules";
+import { FullSheet } from "@/components/sheet/full-sheet";
+import { api, ApiError } from "@/lib/api/client";
+import type { CharacterDto } from "@dndficha/rules";
 
-export default async function FichaPublicaPage({
+export default async function PublicSheetPage({
   params,
 }: {
   params: Promise<{ shareSlug: string }>;
 }) {
   const { shareSlug } = await params;
 
-  // Ruta pública del backend: solo responde si el enlace está activo.
-  const personaje = await api<{ character: Personaje }>(`/public/characters/${encodeURIComponent(shareSlug)}`, {
-    autenticada: false,
+  // Public backend route: only responds while the link is enabled.
+  const character = await api<{ character: CharacterDto }>(`/public/characters/${encodeURIComponent(shareSlug)}`, {
+    authenticated: false,
   })
     .then((r) => r.character)
     .catch((error) => {
@@ -26,7 +26,7 @@ export default async function FichaPublicaPage({
       <p className="mx-auto w-full max-w-5xl text-sm text-muted-foreground">
         Ficha compartida en modo solo lectura.
       </p>
-      <FichaCompleta personaje={personaje} soloLectura />
+      <FullSheet character={character} readOnly />
     </main>
   );
 }

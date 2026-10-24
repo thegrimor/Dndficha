@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 
-import { BuscadorObjetos } from "@/components/buscador/buscador-objetos";
+import { ItemSearch } from "@/components/search/item-search";
 
-export default function BuscadorObjetosPage() {
+export default function ItemSearchPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -12,7 +12,7 @@ export default function BuscadorObjetosPage() {
         </p>
       </div>
       <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando...</p>}>
-        <BuscadorObjetos />
+        <ItemSearch />
       </Suspense>
     </div>
   );

@@ -4,10 +4,10 @@ import { DomainError } from "../../../shared-kernel/domain-error";
 
 export const knownSpellSchema = z.object({
   slug: z.string().min(1).max(200),
-  nombre: z.string().min(1).max(200),
-  nivel: z.number().int().min(0).max(9),
-  fuente: z.enum(["open5e", "manual"]),
-  datos: z.unknown().optional(),
+  name: z.string().min(1).max(200),
+  level: z.number().int().min(0).max(9),
+  source: z.enum(["open5e", "manual"]),
+  data: z.unknown().optional(),
   prepared: z.boolean().optional(),
 });
 
@@ -35,16 +35,16 @@ export interface SpellBookRepository {
   deleteAll(characterId: string): Promise<void>;
 }
 
-/** Gasta un espacio de conjuro del nivel indicado. */
-export function gastarEspacio(slots: Slots, nivel: number): Slots {
-  const espacio = slots[String(nivel)];
-  if (!espacio || espacio.used >= espacio.total) {
-    throw new DomainError("conflict", `No quedan espacios de nivel ${nivel}`, "no_slots_left");
+/** Spends a spell slot of the given level. */
+export function spendSlot(slots: Slots, level: number): Slots {
+  const slot = slots[String(level)];
+  if (!slot || slot.used >= slot.total) {
+    throw new DomainError("conflict", `No quedan espacios de nivel ${level}`, "no_slots_left");
   }
-  return { ...slots, [String(nivel)]: { ...espacio, used: espacio.used + 1 } };
+  return { ...slots, [String(level)]: { ...slot, used: slot.used + 1 } };
 }
 
-/** Descanso largo: recupera todos los espacios. */
-export function recuperarEspacios(slots: Slots): Slots {
+/** Long rest: recovers all slots. */
+export function recoverSlots(slots: Slots): Slots {
   return Object.fromEntries(Object.entries(slots).map(([n, s]) => [n, { ...s, used: 0 }]));
 }

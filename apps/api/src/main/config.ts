@@ -1,26 +1,26 @@
 import { z } from "zod";
 
-const esquema = z.object({
+const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3001),
   DATABASE_URL: z.string().min(1),
-  // Orígenes permitidos por CORS, separados por comas. Vacío = sin CORS.
+  // Origins allowed by CORS, comma-separated. Empty = no CORS.
   CORS_ORIGINS: z.string().default(""),
-  // Intentos por minuto y por IP en registro/login.
+  // Attempts per minute and per IP on register/login.
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
-  // Habilita POST /admin/reset-tokens (recuperación de contraseña sin correo). Mínimo 32 caracteres; sin definir, la ruta no existe.
+  // Enables POST /admin/reset-tokens (password recovery without email). At least 32 characters; if unset, the route does not exist.
   ADMIN_TOKEN: z.string().min(32).optional(),
-  // URL pública del front; si está, el administrador recibe el enlace completo.
+  // Public URL of the front end; if set, the administrator receives the full link.
   WEB_URL: z.url().optional(),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 
-export type Config = z.infer<typeof esquema>;
+export type Config = z.infer<typeof schema>;
 
-export function cargarConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const resultado = esquema.safeParse(env);
-  if (!resultado.success) {
-    throw new Error(`Configuración inválida:\n${z.prettifyError(resultado.error)}`);
+export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
+  const result = schema.safeParse(env);
+  if (!result.success) {
+    throw new Error(`Invalid configuration:\n${z.prettifyError(result.error)}`);
   }
-  return resultado.data;
+  return result.data;
 }

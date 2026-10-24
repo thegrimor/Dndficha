@@ -3,9 +3,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 
-// Cliente de TanStack Query para cachear las respuestas del buscador SRD
-// (app/api/open5e/*). staleTime alto porque el contenido del SRD casi no
-// cambia.
+// TanStack Query client to cache the SRD search responses
+// (app/api/open5e/*). High staleTime because SRD content barely
+// changes.
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>

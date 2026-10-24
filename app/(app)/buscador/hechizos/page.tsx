@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 
-import { BuscadorHechizos } from "@/components/buscador/buscador-hechizos";
+import { SpellSearch } from "@/components/search/spell-search";
 
-export default function BuscadorHechizosPage() {
+export default function SpellSearchPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -12,7 +12,7 @@ export default function BuscadorHechizosPage() {
         </p>
       </div>
       <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando...</p>}>
-        <BuscadorHechizos />
+        <SpellSearch />
       </Suspense>
     </div>
   );

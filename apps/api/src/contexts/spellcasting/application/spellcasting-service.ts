@@ -1,15 +1,15 @@
 import type { CharacterAccess } from "../../../shared-kernel/auth";
 import { DomainError } from "../../../shared-kernel/domain-error";
 import {
-  gastarEspacio,
+  spendSlot,
   knownSpellSchema,
-  recuperarEspacios,
+  recoverSlots,
   spellbookSchema,
   type SpellBook,
   type SpellBookRepository,
 } from "../domain/spellbook";
 
-const vacio = (): SpellBook => ({ slots: {}, known: [] });
+const empty = (): SpellBook => ({ slots: {}, known: [] });
 
 export class SpellcastingService {
   constructor(
@@ -22,46 +22,46 @@ export class SpellcastingService {
   }
 
   async replace(characterId: string, book: unknown): Promise<void> {
-    // La ficha numera los espacios con claves numéricas; JSON las entrega como string.
+    // The sheet numbers the slots with numeric keys; JSON delivers them as strings.
     await this.repo.replace(characterId, spellbookSchema.parse(book));
   }
 
-  async obtener(userId: string, characterId: string): Promise<SpellBook> {
+  async get(userId: string, characterId: string): Promise<SpellBook> {
     await this.access.assertOwner(userId, characterId);
-    return (await this.repo.getMany([characterId])).get(characterId) ?? vacio();
+    return (await this.repo.getMany([characterId])).get(characterId) ?? empty();
   }
 
-  async agregarHechizo(userId: string, characterId: string, spell: unknown): Promise<SpellBook> {
-    const libro = await this.obtener(userId, characterId);
-    const nuevo = knownSpellSchema.parse(spell);
-    if (libro.known.some((s) => s.slug === nuevo.slug)) {
+  async addSpell(userId: string, characterId: string, spell: unknown): Promise<SpellBook> {
+    const book = await this.get(userId, characterId);
+    const incoming = knownSpellSchema.parse(spell);
+    if (book.known.some((s) => s.slug === incoming.slug)) {
       throw new DomainError("conflict", "Ese hechizo ya está en la ficha", "spell_already_known");
     }
-    const actualizado = { ...libro, known: [...libro.known, nuevo] };
-    await this.repo.replace(characterId, spellbookSchema.parse(actualizado));
-    return actualizado;
+    const updated = { ...book, known: [...book.known, incoming] };
+    await this.repo.replace(characterId, spellbookSchema.parse(updated));
+    return updated;
   }
 
-  async quitarHechizo(userId: string, characterId: string, slug: string): Promise<void> {
-    const libro = await this.obtener(userId, characterId);
-    await this.repo.replace(characterId, { ...libro, known: libro.known.filter((s) => s.slug !== slug) });
+  async removeSpell(userId: string, characterId: string, slug: string): Promise<void> {
+    const book = await this.get(userId, characterId);
+    await this.repo.replace(characterId, { ...book, known: book.known.filter((s) => s.slug !== slug) });
   }
 
-  async gastarEspacio(userId: string, characterId: string, nivel: number): Promise<SpellBook> {
-    const libro = await this.obtener(userId, characterId);
-    const actualizado = { ...libro, slots: gastarEspacio(libro.slots, nivel) };
-    await this.repo.replace(characterId, actualizado);
-    return actualizado;
+  async spendSlot(userId: string, characterId: string, level: number): Promise<SpellBook> {
+    const book = await this.get(userId, characterId);
+    const updated = { ...book, slots: spendSlot(book.slots, level) };
+    await this.repo.replace(characterId, updated);
+    return updated;
   }
 
-  async descansoLargo(userId: string, characterId: string): Promise<SpellBook> {
-    const libro = await this.obtener(userId, characterId);
-    const actualizado = { ...libro, slots: recuperarEspacios(libro.slots) };
-    await this.repo.replace(characterId, actualizado);
-    return actualizado;
+  async longRest(userId: string, characterId: string): Promise<SpellBook> {
+    const book = await this.get(userId, characterId);
+    const updated = { ...book, slots: recoverSlots(book.slots) };
+    await this.repo.replace(characterId, updated);
+    return updated;
   }
 
-  eliminarDe(characterId: string) {
+  deleteFor(characterId: string) {
     return this.repo.deleteAll(characterId);
   }
 }

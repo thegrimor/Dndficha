@@ -11,8 +11,8 @@ export interface TabItem {
 }
 
 /**
- * Tabs mínimas hechas a mano (sin Radix). Pensadas para apilar bloques de la
- * ficha en móvil sin scroll infinito, evitando duplicar contenido en el DOM.
+ * Minimal hand-made tabs (no Radix). Meant to stack sheet blocks on mobile
+ * without endless scrolling, avoiding duplicated content in the DOM.
  */
 export function Tabs({
   items,
@@ -23,7 +23,7 @@ export function Tabs({
   defaultValue?: string;
   className?: string;
 }) {
-  const [activo, setActivo] = React.useState(defaultValue ?? items[0]?.value);
+  const [active, setActive] = React.useState(defaultValue ?? items[0]?.value);
   const idBase = React.useId();
 
   return (
@@ -34,20 +34,20 @@ export function Tabs({
         className="flex flex-wrap gap-1 border-b border-border"
       >
         {items.map((item) => {
-          const seleccionado = activo === item.value;
+          const selected = active === item.value;
           return (
             <button
               key={item.value}
               type="button"
               role="tab"
               id={`${idBase}-tab-${item.value}`}
-              aria-selected={seleccionado}
+              aria-selected={selected}
               aria-controls={`${idBase}-panel-${item.value}`}
-              tabIndex={seleccionado ? 0 : -1}
-              onClick={() => setActivo(item.value)}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => setActive(item.value)}
               className={cn(
                 "rounded-t-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                seleccionado
+                selected
                   ? "border-b-2 border-primary text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               )}
@@ -63,7 +63,7 @@ export function Tabs({
           role="tabpanel"
           id={`${idBase}-panel-${item.value}`}
           aria-labelledby={`${idBase}-tab-${item.value}`}
-          hidden={activo !== item.value}
+          hidden={active !== item.value}
           className="pt-4"
         >
           {item.content}

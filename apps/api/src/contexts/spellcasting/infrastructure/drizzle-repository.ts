@@ -8,29 +8,29 @@ export class DrizzleSpellBookRepository implements SpellBookRepository {
   constructor(private db: Db) {}
 
   async getMany(characterIds: string[]) {
-    const mapa = new Map<string, SpellBook>();
-    if (characterIds.length === 0) return mapa;
+    const map = new Map<string, SpellBook>();
+    if (characterIds.length === 0) return map;
 
-    const [libros, conocidos] = await Promise.all([
+    const [books, known] = await Promise.all([
       this.db.select().from(spellBooks).where(inArray(spellBooks.characterId, characterIds)),
       this.db.select().from(knownSpells).where(inArray(knownSpells.characterId, characterIds)).orderBy(asc(knownSpells.position)),
     ]);
 
-    for (const l of libros) mapa.set(l.characterId, { slots: l.slots, known: [] });
-    for (const c of conocidos) {
-      const libro = mapa.get(c.characterId) ?? { slots: {}, known: [] };
+    for (const l of books) map.set(l.characterId, { slots: l.slots, known: [] });
+    for (const c of known) {
+      const book = map.get(c.characterId) ?? { slots: {}, known: [] };
       const spell: KnownSpell = {
         slug: c.slug,
-        nombre: c.name,
-        nivel: c.level,
-        fuente: c.source as KnownSpell["fuente"],
-        datos: c.data ?? undefined,
+        name: c.name,
+        level: c.level,
+        source: c.source as KnownSpell["source"],
+        data: c.data ?? undefined,
         prepared: c.prepared,
       };
-      libro.known.push(spell);
-      mapa.set(c.characterId, libro);
+      book.known.push(spell);
+      map.set(c.characterId, book);
     }
-    return mapa;
+    return map;
   }
 
   async replace(characterId: string, book: SpellBook) {
@@ -45,10 +45,10 @@ export class DrizzleSpellBookRepository implements SpellBookRepository {
         book.known.map((s, position) => ({
           characterId,
           slug: s.slug,
-          name: s.nombre,
-          level: s.nivel,
-          source: s.fuente,
-          data: s.datos ?? null,
+          name: s.name,
+          level: s.level,
+          source: s.source,
+          data: s.data ?? null,
           prepared: s.prepared ?? false,
           position,
         }))

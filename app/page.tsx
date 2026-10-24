@@ -4,21 +4,21 @@ import { BookOpen, ScrollText, Sparkles, Sword } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-const caracteristicas = [
+const abilities = [
   {
-    icono: ScrollText,
-    titulo: "Fichas completas",
-    descripcion: "Crea y edita fichas de personaje de D&D 5e con cálculos automáticos de estadísticas.",
+    icon: ScrollText,
+    title: "Fichas completas",
+    description: "Crea y edita fichas de personaje de D&D 5e con cálculos automáticos de estadísticas.",
   },
   {
-    icono: BookOpen,
-    titulo: "Buscador integrado",
-    descripcion: "Consulta hechizos y objetos del SRD y añádelos a tu ficha en un par de clics.",
+    icon: BookOpen,
+    title: "Buscador integrado",
+    description: "Consulta hechizos y objetos del SRD y añádelos a tu ficha en un par de clics.",
   },
   {
-    icono: Sparkles,
-    titulo: "Siempre a mano",
-    descripcion: "Tus personajes se guardan en la nube y están disponibles desde cualquier dispositivo.",
+    icon: Sparkles,
+    title: "Siempre a mano",
+    description: "Tus personajes se guardan en la nube y están disponibles desde cualquier dispositivo.",
   },
 ];
 
@@ -45,12 +45,12 @@ export default function LandingPage() {
       </div>
 
       <div className="grid w-full max-w-4xl grid-cols-1 gap-4 sm:grid-cols-3">
-        {caracteristicas.map(({ icono: Icono, titulo, descripcion }) => (
-          <Card key={titulo} className="text-left">
+        {abilities.map(({ icon: Icon, title, description }) => (
+          <Card key={title} className="text-left">
             <CardContent className="flex flex-col gap-2 p-5">
-              <Icono className="h-5 w-5 text-accent" />
-              <h2 className="font-semibold">{titulo}</h2>
-              <p className="text-sm text-muted-foreground">{descripcion}</p>
+              <Icon className="h-5 w-5 text-accent" />
+              <h2 className="font-semibold">{title}</h2>
+              <p className="text-sm text-muted-foreground">{description}</p>
             </CardContent>
           </Card>
         ))}

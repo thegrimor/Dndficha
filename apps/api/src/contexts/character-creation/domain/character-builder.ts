@@ -1,136 +1,136 @@
 import {
-  agregarCompetencias,
-  ARRAY_ESTANDAR,
-  CARACTERISTICAS,
-  CLASES_SRD,
-  RAZAS_SRD,
-  calcularPuntuacionesFinales,
-  claseArmadura,
-  fichaVacia,
-  iniciativa,
-  puntosGolpeIniciales,
-  type DatosWizard,
-  type DoteElegida,
-  type FichaPersonaje,
-  type TrasfondoSrd,
+  aggregateProficiencies,
+  STANDARD_ARRAY,
+  ABILITIES,
+  CLASSES_SRD,
+  RACES_SRD,
+  computeFinalScores,
+  armorClass,
+  emptySheet,
+  initiative,
+  initialHitPoints,
+  type WizardData,
+  type ChosenFeat,
+  type CharacterSheet,
+  type BackgroundSrd,
 } from "@dndficha/rules";
 
 import { DomainError } from "../../../shared-kernel/domain-error";
 
-/** Lo que el wizard envía: igual que `DatosWizard`, pero el trasfondo se resuelve en el servidor. */
-export type SolicitudWizard = Omit<DatosWizard, "trasfondoDatos">;
+/** What the wizard sends: same as `WizardData`, but the background is resolved on the server. */
+export type WizardRequest = Omit<WizardData, "backgroundData">;
 
-export interface PersonajeNuevo {
+export interface NewCharacter {
   name: string;
   race: string;
   class: string;
   level: 1;
   background: string;
-  edicion: FichaPersonaje["edicion"];
-  sheet: FichaPersonaje;
+  edition: CharacterSheet["edition"];
+  sheet: CharacterSheet;
 }
 
-const invalido = (mensaje: string, code: string) => new DomainError("validation", mensaje, code);
+const invalid = (message: string, code: string) => new DomainError("validation", message, code);
 
 /**
- * Domain service: valida las elecciones del wizard contra las reglas del SRD
- * y construye la ficha de nivel 1. No hace E/S: el trasfondo y la dote ya
- * llegan resueltos por el caso de uso.
+ * Domain service: validates the wizard's choices against the SRD rules and
+ * builds the level 1 sheet. It does no I/O: the background and the feat
+ * arrive already resolved by the use case.
  */
-export function construirPersonaje(
-  solicitud: SolicitudWizard,
-  trasfondo: TrasfondoSrd,
-  dote: DoteElegida | null
-): PersonajeNuevo {
-  const nombre = solicitud.nombre.trim();
-  if (!nombre) throw invalido("Falta el nombre del personaje", "name_required");
+export function buildCharacter(
+  input: WizardRequest,
+  background: BackgroundSrd,
+  feat: ChosenFeat | null
+): NewCharacter {
+  const name = input.name.trim();
+  if (!name) throw invalid("Falta el nombre del personaje", "name_required");
 
-  const raza = RAZAS_SRD.find((r) => r.id === solicitud.razaId);
-  const clase = CLASES_SRD.find((c) => c.id === solicitud.claseId);
-  if (!raza) throw invalido("Raza no válida", "invalid_race");
-  if (!clase) throw invalido("Clase no válida", "invalid_class");
+  const race = RACES_SRD.find((r) => r.id === input.raceId);
+  const characterClass = CLASSES_SRD.find((c) => c.id === input.classId);
+  if (!race) throw invalid("Raza no válida", "invalid_race");
+  if (!characterClass) throw invalid("Clase no válida", "invalid_class");
 
   if (
-    solicitud.edicion === "2014" &&
-    raza.eleccionLibre &&
-    new Set(solicitud.eleccionesCaracteristicaRaza).size !== raza.eleccionLibre.cantidad
+    input.edition === "2014" &&
+    race.freeChoice &&
+    new Set(input.raceAbilityChoices).size !== race.freeChoice.count
   ) {
-    throw invalido("Elecciones de característica de la raza incompletas", "invalid_race_choices");
+    throw invalid("Elecciones de característica de la raza incompletas", "invalid_race_choices");
   }
 
-  const habilidades = solicitud.habilidadesClaseElegidas;
+  const chosenSkills = input.chosenClassSkills;
   if (
-    new Set(habilidades).size !== clase.numHabilidadesElegibles ||
-    habilidades.length !== clase.numHabilidadesElegibles ||
-    habilidades.some((h) => !clase.habilidadesDisponibles.includes(h))
+    new Set(chosenSkills).size !== characterClass.skillChoiceCount ||
+    chosenSkills.length !== characterClass.skillChoiceCount ||
+    chosenSkills.some((h) => !characterClass.availableSkills.includes(h))
   ) {
-    throw invalido("Habilidades de clase no válidas", "invalid_class_skills");
+    throw invalid("Habilidades de clase no válidas", "invalid_class_skills");
   }
 
-  if (solicitud.idiomasTrasfondoElegidos.length !== trasfondo.numIdiomasElegibles) {
-    throw invalido("Idiomas del trasfondo no válidos", "invalid_languages");
+  if (input.chosenBackgroundLanguages.length !== background.languageChoiceCount) {
+    throw invalid("Idiomas del trasfondo no válidos", "invalid_languages");
   }
 
-  validarPuntuaciones(solicitud);
+  validateScores(input);
 
-  if (solicitud.edicion === "2024") {
-    const { modo, mas2, mas1 } = solicitud.bonificadorTrasfondo;
-    const opciones = trasfondo.bonificadorCaracteristicas ?? [];
-    if (modo === "reparto" && (!mas2 || !mas1 || mas2 === mas1 || !opciones.includes(mas2) || !opciones.includes(mas1))) {
-      throw invalido("Reparto del bonificador del trasfondo no válido", "invalid_background_bonus");
+  if (input.edition === "2024") {
+    const { mode, plus2, plus1 } = input.backgroundBonus;
+    const options = background.abilityBonusOptions ?? [];
+    if (mode === "split" && (!plus2 || !plus1 || plus2 === plus1 || !options.includes(plus2) || !options.includes(plus1))) {
+      throw invalid("Reparto del bonificador del trasfondo no válido", "invalid_background_bonus");
     }
-    if (!dote) throw invalido("Falta la dote de origen", "origin_feat_required");
+    if (!feat) throw invalid("Falta la dote de origen", "origin_feat_required");
   }
 
-  const abilityScores = calcularPuntuacionesFinales({
-    edicion: solicitud.edicion,
-    raza,
-    trasfondo,
-    puntuacionesBase: solicitud.puntuacionesBase,
-    eleccionesCaracteristicaRaza: solicitud.eleccionesCaracteristicaRaza,
-    bonificadorTrasfondo: solicitud.bonificadorTrasfondo,
+  const abilityScores = computeFinalScores({
+    edition: input.edition,
+    race,
+    background,
+    baseScores: input.baseScores,
+    raceAbilityChoices: input.raceAbilityChoices,
+    backgroundBonus: input.backgroundBonus,
   });
 
-  const { skills, savingThrows, languages, proficiencies } = agregarCompetencias({
-    raza,
-    clase,
-    trasfondo,
-    habilidadesClaseElegidas: habilidades,
-    idiomasTrasfondoElegidos: solicitud.idiomasTrasfondoElegidos,
+  const { skills, savingThrows, languages, proficiencies } = aggregateProficiencies({
+    race,
+    characterClass,
+    background,
+    chosenClassSkills: chosenSkills,
+    chosenBackgroundLanguages: input.chosenBackgroundLanguages,
   });
 
-  const pgMax = Math.max(1, puntosGolpeIniciales(clase.dadoGolpe, abilityScores.con));
-  const sheet: FichaPersonaje = {
-    ...fichaVacia(),
-    edicion: solicitud.edicion,
+  const maxHp = Math.max(1, initialHitPoints(characterClass.hitDie, abilityScores.con));
+  const sheet: CharacterSheet = {
+    ...emptySheet(),
+    edition: input.edition,
     abilityScores,
     savingThrows,
     skills,
     languages,
     proficiencies,
-    features: [...raza.rasgos, ...clase.rasgosNivel1, trasfondo.rasgo, ...(solicitud.edicion === "2024" && dote ? [dote] : [])],
+    features: [...race.features, ...characterClass.level1Features, background.feature, ...(input.edition === "2024" && feat ? [feat] : [])],
     combat: {
-      ac: claseArmadura(abilityScores.dex),
-      initiative: iniciativa(abilityScores.dex),
-      speed: raza.velocidad,
-      hp: { current: pgMax, max: pgMax, temp: 0 },
-      hitDice: `1d${clase.dadoGolpe}`,
+      ac: armorClass(abilityScores.dex),
+      initiative: initiative(abilityScores.dex),
+      speed: race.speed,
+      hp: { current: maxHp, max: maxHp, temp: 0 },
+      hitDice: `1d${characterClass.hitDie}`,
     },
   };
 
-  return { name: nombre, race: raza.nombre, class: clase.nombre, level: 1, background: trasfondo.nombre, edicion: solicitud.edicion, sheet };
+  return { name: name, race: race.name, class: characterClass.name, level: 1, background: background.name, edition: input.edition, sheet };
 }
 
-function validarPuntuaciones({ metodoPuntuaciones, puntuacionesBase }: SolicitudWizard): void {
-  const valores = CARACTERISTICAS.map((c) => puntuacionesBase[c]);
-  if (metodoPuntuaciones === "array") {
-    const esperado = [...ARRAY_ESTANDAR].sort((a, b) => a - b).join(",");
-    if ([...valores].sort((a, b) => a - b).join(",") !== esperado) {
-      throw invalido("Las puntuaciones deben ser una asignación del array estándar", "invalid_scores");
+function validateScores({ scoreMethod, baseScores }: WizardRequest): void {
+  const values = ABILITIES.map((c) => baseScores[c]);
+  if (scoreMethod === "array") {
+    const expected = [...STANDARD_ARRAY].sort((a, b) => a - b).join(",");
+    if ([...values].sort((a, b) => a - b).join(",") !== expected) {
+      throw invalid("Las puntuaciones deben ser una asignación del array estándar", "invalid_scores");
     }
     return;
   }
-  if (!valores.every((v) => Number.isInteger(v) && v >= 1 && v <= 30)) {
-    throw invalido("Las puntuaciones deben estar entre 1 y 30", "invalid_scores");
+  if (!values.every((v) => Number.isInteger(v) && v >= 1 && v <= 30)) {
+    throw invalid("Las puntuaciones deben estar entre 1 y 30", "invalid_scores");
   }
 }

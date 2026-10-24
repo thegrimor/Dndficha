@@ -3,16 +3,16 @@
 import { useEffect, useState } from "react";
 
 /**
- * Devuelve `valor` retrasado `delayMs` milisegundos. Se usa para no disparar
- * una petición a /api/open5e/* en cada pulsación del buscador de texto.
+ * Returns `value` delayed by `delayMs` milliseconds. Used to avoid firing
+ * a request to /api/open5e/* on every keystroke in the text search.
  */
-export function useDebounce<T>(valor: T, delayMs = 350): T {
-  const [valorDebounced, setValorDebounced] = useState(valor);
+export function useDebounce<T>(value: T, delayMs = 350): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => setValorDebounced(valor), delayMs);
+    const timeoutId = setTimeout(() => setDebouncedValue(value), delayMs);
     return () => clearTimeout(timeoutId);
-  }, [valor, delayMs]);
+  }, [value, delayMs]);
 
-  return valorDebounced;
+  return debouncedValue;
 }

@@ -23,8 +23,8 @@ export interface Overrides {
   hasher?: PasswordHasher;
 }
 
-/** Composition root: único lugar donde se conectan contextos, puertos y adaptadores. */
-export function crearContainer(db: Db, overrides: Overrides = {}) {
+/** Composition root: the only place where contexts, ports and adapters are wired together. */
+export function createContainer(db: Db, overrides: Overrides = {}) {
   const events = new InMemoryEventBus();
 
   const auth = new AuthService(
@@ -36,31 +36,31 @@ export function crearContainer(db: Db, overrides: Overrides = {}) {
 
   const catalog = new CatalogService(overrides.gateway ?? new Open5eHttpGateway(), new DrizzleCatalogCache(db));
 
-  // Characters necesita leer/escribir secciones de otros contextos, y estos necesitan
-  // comprobar la propiedad del personaje: el ciclo se rompe con un acceso diferido.
-  const acceso: CharacterAccess = { assertOwner: (u, c) => characters.assertOwner(u, c) };
+  // Characters needs to read/write sections of other contexts, and those need to
+  // check ownership of the character: the cycle is broken with deferred access.
+  const access: CharacterAccess = { assertOwner: (u, c) => characters.assertOwner(u, c) };
 
-  const inventory = new InventoryService(new DrizzleInventoryRepository(db), acceso);
-  const spellcasting = new SpellcastingService(new DrizzleSpellBookRepository(db), acceso);
-  const sharing = new SharingService(new DrizzleShareLinkRepository(db), acceso);
+  const inventory = new InventoryService(new DrizzleInventoryRepository(db), access);
+  const spellcasting = new SpellcastingService(new DrizzleSpellBookRepository(db), access);
+  const sharing = new SharingService(new DrizzleShareLinkRepository(db), access);
 
   const characters: CharacterService = new CharacterService(
     new DrizzleCharacterRepository(db),
     { listMany: (ids) => inventory.listMany(ids), replace: (id, items) => inventory.replace(id, items) },
-    { getMany: (ids) => spellcasting.getMany(ids), replace: (id, libro) => spellcasting.replace(id, libro) },
+    { getMany: (ids) => spellcasting.getMany(ids), replace: (id, book) => spellcasting.replace(id, book) },
     { statusMany: (ids) => sharing.statusMany(ids) },
     events
   );
 
   const creation = new CreateCharacterFromWizard(catalog, characters);
 
-  // Borrar un personaje limpia lo que otros contextos guardan sobre él.
+  // Deleting a character cleans up what other contexts store about it.
   events.subscribe("CharacterDeleted", async (e) => {
     const { characterId } = e as unknown as { characterId: string };
-    await Promise.all([inventory.eliminarDe(characterId), spellcasting.eliminarDe(characterId), sharing.eliminarDe(characterId)]);
+    await Promise.all([inventory.deleteFor(characterId), spellcasting.deleteFor(characterId), sharing.deleteFor(characterId)]);
   });
 
   return { events, auth, catalog, characters, inventory, spellcasting, sharing, creation };
 }
 
-export type Container = ReturnType<typeof crearContainer>;
+export type Container = ReturnType<typeof createContainer>;

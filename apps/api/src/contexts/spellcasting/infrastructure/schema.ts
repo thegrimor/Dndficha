@@ -2,7 +2,7 @@ import { boolean, index, integer, jsonb, pgTable, text, uuid } from "drizzle-orm
 
 export const spellBooks = pgTable("spell_books", {
   characterId: uuid("character_id").primaryKey(),
-  /** nivel de hechizo -> { total, used } */
+  /** spell level -> { total, used } */
   slots: jsonb("slots").$type<Record<string, { total: number; used: number }>>().notNull().default({}),
 });
 

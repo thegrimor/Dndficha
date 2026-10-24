@@ -3,19 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { api } from "@/lib/api/cliente";
-import type { DatosWizard, Personaje } from "@dndficha/rules";
+import { api } from "@/lib/api/client";
+import type { WizardData, CharacterDto } from "@dndficha/rules";
 
 /**
- * La construcción de la ficha (cálculo de puntuaciones, competencias, PG...)
- * y su validación contra las reglas del SRD ocurren en el backend, contexto
- * Character Creation. El trasfondo se envía por id: el servidor lo resuelve.
+ * Building the sheet (score calculation, proficiencies, HP...) and validating
+ * it against the SRD rules happen in the backend, in the Character Creation
+ * context. The background is sent by id: the server resolves it.
  */
-export async function crearPersonajeDesdeWizard(datos: DatosWizard) {
-  const { trasfondoDatos, ...solicitud } = datos;
-  const { character } = await api<{ character: Personaje }>("/character-creation", {
+export async function createCharacterFromWizard(data: WizardData) {
+  const { backgroundData, ...input } = data;
+  const { character } = await api<{ character: CharacterDto }>("/character-creation", {
     method: "POST",
-    body: { ...solicitud, trasfondoId: datos.trasfondoId ?? trasfondoDatos?.id ?? null },
+    body: { ...input, backgroundId: data.backgroundId ?? backgroundData?.id ?? null },
   });
 
   revalidatePath("/personajes");

@@ -9,7 +9,7 @@ export interface User {
 }
 
 export interface Session {
-  /** Hash del token entregado al cliente. */
+  /** Hash of the token handed to the client. */
   id: string;
   userId: string;
   expiresAt: Date;
@@ -18,21 +18,21 @@ export interface Session {
 export interface UserRepository {
   findByEmail(email: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
-  /** Lanza `DomainError` conflict si el correo ya existe. */
+  /** Throws a `conflict` `DomainError` if the email already exists. */
   create(data: { email: string; username: string; passwordHash: string }): Promise<User>;
   updatePassword(userId: string, passwordHash: string): Promise<void>;
 }
 
 export interface ResetTokenRepository {
-  /** Sustituye cualquier enlace anterior del usuario: solo hay uno válido a la vez. */
+  /** Replaces any previous link of the user: only one is valid at a time. */
   replaceForUser(userId: string, tokenId: string, expiresAt: Date): Promise<void>;
-  /** Marca el enlace como usado de forma atómica; devuelve el usuario, o `null` si no existe, caducó o ya se usó. */
+  /** Atomically marks the link as used; returns the user, or `null` if it does not exist, expired or was already used. */
   consume(tokenId: string, now: Date): Promise<string | null>;
 }
 
 export interface SessionRepository {
   create(session: Session): Promise<void>;
-  /** Devuelve la sesión solo si no ha caducado. */
+  /** Returns the session only if it has not expired. */
   findActive(id: string, now: Date): Promise<Session | null>;
   delete(id: string): Promise<void>;
   deleteAllForUser(userId: string): Promise<void>;
@@ -45,7 +45,7 @@ export interface PasswordHasher {
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function normalizarEmail(raw: string): string {
+export function normalizeEmail(raw: string): string {
   const email = raw.trim().toLowerCase();
   if (email.length > 254 || !EMAIL.test(email)) {
     throw new DomainError("validation", "El correo no es válido", "invalid_email");
@@ -53,13 +53,13 @@ export function normalizarEmail(raw: string): string {
   return email;
 }
 
-export function validarContrasena(plain: string): void {
+export function validatePassword(plain: string): void {
   if (plain.length < 8 || plain.length > 128) {
     throw new DomainError("validation", "La contraseña debe tener entre 8 y 128 caracteres", "invalid_password");
   }
 }
 
-export function validarUsername(raw: string): string {
+export function validateUsername(raw: string): string {
   const username = raw.trim();
   if (username.length < 2 || username.length > 30) {
     throw new DomainError("validation", "El nombre de usuario debe tener entre 2 y 30 caracteres", "invalid_username");

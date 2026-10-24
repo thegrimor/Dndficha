@@ -1,10 +1,10 @@
-import { DOTES_SRD, trasfondoDesdeOpen5e, type DoteElegida } from "@dndficha/rules";
+import { FEATS_SRD, backgroundFromOpen5e, type ChosenFeat } from "@dndficha/rules";
 
 import { DomainError } from "../../../shared-kernel/domain-error";
 import type { CatalogService } from "../../catalog/application/catalog-service";
-import type { CharacterService, PersonajeDto } from "../../characters/application/character-service";
-import { extraerCore } from "../../characters/domain/character";
-import { construirPersonaje, type SolicitudWizard } from "../domain/character-builder";
+import type { CharacterService, CharacterDto } from "../../characters/application/character-service";
+import { extractCore } from "../../characters/domain/character";
+import { buildCharacter, type WizardRequest } from "../domain/character-builder";
 
 export class CreateCharacterFromWizard {
   constructor(
@@ -12,38 +12,38 @@ export class CreateCharacterFromWizard {
     private characters: CharacterService
   ) {}
 
-  async ejecutar(userId: string, solicitud: SolicitudWizard): Promise<PersonajeDto> {
-    if (!solicitud.trasfondoId) throw new DomainError("validation", "Falta el trasfondo", "background_required");
+  async execute(userId: string, input: WizardRequest): Promise<CharacterDto> {
+    if (!input.backgroundId) throw new DomainError("validation", "Falta el trasfondo", "background_required");
 
-    // El trasfondo se toma del catálogo, nunca de lo que mande el cliente.
-    const trasfondo = trasfondoDesdeOpen5e(await this.catalog.obtenerTrasfondo(solicitud.edicion, solicitud.trasfondoId));
-    const nuevo = construirPersonaje(solicitud, trasfondo, resolverDote(solicitud));
+    // The background is taken from the catalog, never from what the client sends.
+    const background = backgroundFromOpen5e(await this.catalog.getBackground(input.edition, input.backgroundId));
+    const incoming = buildCharacter(input, background, resolveFeat(input));
 
-    const { edicion, inventory, spells, ...nucleo } = nuevo.sheet;
-    return this.characters.crear(userId, {
-      name: nuevo.name,
-      race: nuevo.race,
-      class: nuevo.class,
-      level: nuevo.level,
-      background: nuevo.background,
+    const { edition, inventory, spells, ...core } = incoming.sheet;
+    return this.characters.create(userId, {
+      name: incoming.name,
+      race: incoming.race,
+      class: incoming.class,
+      level: incoming.level,
+      background: incoming.background,
       alignment: null,
       imageUrl: null,
-      edition: edicion,
-      core: extraerCore({ edicion, inventory, spells, ...nucleo }),
+      edition: edition,
+      core: extractCore({ edition, inventory, spells, ...core }),
       inventory,
       spells,
     });
   }
 }
 
-function resolverDote({ doteOrigen, edicion }: SolicitudWizard): DoteElegida | null {
-  if (edicion !== "2024") return null;
-  if (doteOrigen.modo === "manual") {
-    const nombre = doteOrigen.manualNombre.trim();
-    if (!nombre) return null;
-    return { nombre: nombre.slice(0, 200), descripcion: doteOrigen.manualDescripcion.trim().slice(0, 5000) };
+function resolveFeat({ originFeat, edition }: WizardRequest): ChosenFeat | null {
+  if (edition !== "2024") return null;
+  if (originFeat.mode === "manual") {
+    const name = originFeat.manualName.trim();
+    if (!name) return null;
+    return { name: name.slice(0, 200), description: originFeat.manualDescription.trim().slice(0, 5000) };
   }
-  // Del catálogo: se usa la descripción oficial del servidor, no la que envía el cliente.
-  const dote = DOTES_SRD.find((d) => d.nombre === doteOrigen.doteElegida?.nombre);
-  return dote ? { nombre: dote.nombre, descripcion: dote.descripcion } : null;
+  // From the catalog: the server's official description is used, not the one sent by the client.
+  const feat = FEATS_SRD.find((d) => d.name === originFeat.chosenFeat?.name);
+  return feat ? { name: feat.name, description: feat.description } : null;
 }

@@ -1,4 +1,4 @@
-# Postgres local para desarrollo: `docker compose up -d`
+# Local Postgres for development: `docker compose up -d`
 services:
   db:
     image: postgres:17-alpine

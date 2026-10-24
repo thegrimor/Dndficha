@@ -2,36 +2,36 @@
 
 import { redirect } from "next/navigation";
 
-import { api, ApiError } from "@/lib/api/cliente";
-import { borrarSesion, guardarSesion, obtenerToken } from "@/lib/api/sesion";
+import { api, ApiError } from "@/lib/api/client";
+import { clearSession, saveSession, getToken } from "@/lib/api/session";
 
-interface RespuestaSesion {
+interface SessionResponse {
   token: string;
   expiresAt: string;
 }
 
-async function abrirSesion(ruta: "/auth/login" | "/auth/register", cuerpo: object, rutaError: string) {
-  let sesion: RespuestaSesion;
+async function openSession(route: "/auth/login" | "/auth/register", body: object, errorRoute: string) {
+  let session: SessionResponse;
   try {
-    sesion = await api<RespuestaSesion>(ruta, { method: "POST", body: cuerpo, autenticada: false });
+    session = await api<SessionResponse>(route, { method: "POST", body: body, authenticated: false });
   } catch (error) {
-    const mensaje = error instanceof ApiError ? error.message : "No se pudo completar la operación.";
-    redirect(`${rutaError}?error=${encodeURIComponent(mensaje)}`);
+    const message = error instanceof ApiError ? error.message : "No se pudo completar la operación.";
+    redirect(`${errorRoute}?error=${encodeURIComponent(message)}`);
   }
-  await guardarSesion(sesion.token, sesion.expiresAt);
+  await saveSession(session.token, session.expiresAt);
   redirect("/personajes");
 }
 
-export async function iniciarSesion(formData: FormData) {
-  await abrirSesion(
+export async function signIn(formData: FormData) {
+  await openSession(
     "/auth/login",
     { email: String(formData.get("email") ?? ""), password: String(formData.get("password") ?? "") },
     "/login"
   );
 }
 
-export async function registrarse(formData: FormData) {
-  await abrirSesion(
+export async function signUp(formData: FormData) {
+  await openSession(
     "/auth/register",
     {
       email: String(formData.get("email") ?? ""),
@@ -42,30 +42,30 @@ export async function registrarse(formData: FormData) {
   );
 }
 
-export async function cerrarSesion() {
-  const token = await obtenerToken();
+export async function signOut() {
+  const token = await getToken();
   if (token) {
-    // Si el backend no responde, la cookie se borra igualmente.
+    // If the backend does not respond, the cookie is cleared anyway.
     await api("/auth/logout", { method: "POST", token }).catch(() => undefined);
   }
-  await borrarSesion();
+  await clearSession();
   redirect("/login");
 }
 
-/** Fija una contraseña nueva con el enlace de un solo uso que entrega el administrador. */
-export async function restablecerContrasena(formData: FormData) {
+/** Sets a new password using the single-use link provided by the administrator. */
+export async function resetPassword(formData: FormData) {
   const token = String(formData.get("token") ?? "");
   const password = String(formData.get("password") ?? "");
-  const confirmacion = String(formData.get("confirmacion") ?? "");
-  const volver = (mensaje: string) =>
-    redirect(`/restablecer?token=${encodeURIComponent(token)}&error=${encodeURIComponent(mensaje)}`);
+  const confirmation = String(formData.get("confirmation") ?? "");
+  const goBack = (message: string) =>
+    redirect(`/restablecer?token=${encodeURIComponent(token)}&error=${encodeURIComponent(message)}`);
 
-  if (password !== confirmacion) volver("Las contraseñas no coinciden.");
+  if (password !== confirmation) goBack("Las contraseñas no coinciden.");
 
   try {
-    await api("/auth/reset-password", { method: "POST", body: { token, password }, autenticada: false });
+    await api("/auth/reset-password", { method: "POST", body: { token, password }, authenticated: false });
   } catch (error) {
-    volver(error instanceof ApiError ? error.message : "No se pudo cambiar la contraseña.");
+    goBack(error instanceof ApiError ? error.message : "No se pudo cambiar la contraseña.");
   }
   redirect("/login?ok=1");
 }

@@ -1,6 +1,6 @@
-import { BuscadorMonstruos } from "@/components/buscador/buscador-monstruos";
+import { MonsterSearch } from "@/components/search/monster-search";
 
-export default function BuscadorMonstruosPage() {
+export default function MonsterSearchPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -9,7 +9,7 @@ export default function BuscadorMonstruosPage() {
           Consulta el bestiario SRD (solo lectura, sin añadir a fichas todavía).
         </p>
       </div>
-      <BuscadorMonstruos />
+      <MonsterSearch />
     </div>
   );
 }

@@ -1,79 +1,79 @@
-import type { Caracteristica } from "./constantes";
-import type { BonificadorTrasfondoElegido } from "./competencias";
-import type { TrasfondoSrd } from "./datos-srd";
-import type { EdicionDnD } from "./ediciones";
+import type { Ability } from "./constants";
+import type { ChosenBackgroundBonus } from "./proficiencies";
+import type { BackgroundSrd } from "./srd-data";
+import type { DndEdition } from "./editions";
 
-export type MetodoPuntuaciones = "array" | "manual";
+export type ScoreMethod = "array" | "manual";
 
-/** Dote resuelta (nombre + descripción), venga del catálogo en vivo de Open5e o escrita a mano. */
-export interface DoteElegida {
-  nombre: string;
-  descripcion: string;
+/** Resolved feat (name + description), whether from the live Open5e catalog or typed by hand. */
+export interface ChosenFeat {
+  name: string;
+  description: string;
 }
 
 /**
- * Dote de origen otorgada por el trasfondo (solo edición 2024): "catalogo"
- * elige una dote del catálogo en vivo de Open5e (ver /api/open5e/feats),
- * "manual" permite escribir nombre y descripción libremente para dotes que
- * no aparezcan ahí.
+ * Origin feat granted by the background (2024 edition only): "catalog"
+ * picks a feat from the live Open5e catalog (see /api/open5e/feats),
+ * "manual" lets the user type name and description freely for feats that
+ * do not appear there.
  */
-export interface DoteOrigenElegida {
-  modo: "catalogo" | "manual";
-  doteElegida: DoteElegida | null;
-  manualNombre: string;
-  manualDescripcion: string;
+export interface ChosenOriginFeat {
+  mode: "catalog" | "manual";
+  chosenFeat: ChosenFeat | null;
+  manualName: string;
+  manualDescription: string;
 }
 
-/** Resuelve la dote de origen elegida en el wizard (catálogo o manual) a un rasgo mostrable. */
-export function resolverDoteOrigen(doteOrigen: DoteOrigenElegida): DoteElegida | null {
-  if (doteOrigen.modo === "manual") {
-    if (!doteOrigen.manualNombre.trim()) return null;
-    return { nombre: doteOrigen.manualNombre.trim(), descripcion: doteOrigen.manualDescripcion.trim() };
+/** Resolves the origin feat chosen in the wizard (catalog or manual) to a displayable feature. */
+export function resolveOriginFeat(originFeat: ChosenOriginFeat): ChosenFeat | null {
+  if (originFeat.mode === "manual") {
+    if (!originFeat.manualName.trim()) return null;
+    return { name: originFeat.manualName.trim(), description: originFeat.manualDescription.trim() };
   }
-  return doteOrigen.doteElegida;
+  return originFeat.chosenFeat;
 }
 
-/** Estado acumulado por el wizard a través de sus pasos. */
-export interface DatosWizard {
-  /** Edición de reglas (2014 o 2024/"5.5"); se fija una vez y queda en el personaje. */
-  edicion: EdicionDnD;
-  nombre: string;
-  razaId: string | null;
-  claseId: string | null;
-  trasfondoId: string | null;
-  /** Trasfondo elegido, ya normalizado desde Open5e (ver lib/dnd/trasfondos-open5e.ts). */
-  trasfondoDatos: TrasfondoSrd | null;
-  /** Características elegidas para el bonificador racial de elección libre (ej. semielfo). */
-  eleccionesCaracteristicaRaza: Caracteristica[];
-  /** Ids de habilidades (de HABILIDADES) elegidas como competencia de clase. */
-  habilidadesClaseElegidas: string[];
-  /** Idiomas elegidos por el trasfondo (además de los fijos de la raza). */
-  idiomasTrasfondoElegidos: string[];
-  /** Solo relevante en edición 2024: reparto del bonificador de característica del trasfondo. */
-  bonificadorTrasfondo: BonificadorTrasfondoElegido;
-  /** Solo relevante en edición 2024: dote de origen otorgada por el trasfondo. */
-  doteOrigen: DoteOrigenElegida;
-  metodoPuntuaciones: MetodoPuntuaciones;
-  /** Puntuaciones base (previas al bonificador racial), una por característica. */
-  puntuacionesBase: Record<Caracteristica, number>;
+/** State accumulated by the wizard across its steps. */
+export interface WizardData {
+  /** Rules edition (2014 or 2024/"5.5"); set once and kept on the character. */
+  edition: DndEdition;
+  name: string;
+  raceId: string | null;
+  classId: string | null;
+  backgroundId: string | null;
+  /** Chosen background, already normalized from Open5e (see open5e-backgrounds.ts). */
+  backgroundData: BackgroundSrd | null;
+  /** Abilities chosen for the racial free-choice bonus (e.g. half-elf). */
+  raceAbilityChoices: Ability[];
+  /** Skill ids (from SKILLS) chosen as class proficiencies. */
+  chosenClassSkills: string[];
+  /** Languages chosen by the background (in addition to the race's fixed ones). */
+  chosenBackgroundLanguages: string[];
+  /** Only relevant in the 2024 edition: split of the background's ability bonus. */
+  backgroundBonus: ChosenBackgroundBonus;
+  /** Only relevant in the 2024 edition: origin feat granted by the background. */
+  originFeat: ChosenOriginFeat;
+  scoreMethod: ScoreMethod;
+  /** Base scores (before the racial bonus), one per ability. */
+  baseScores: Record<Ability, number>;
 }
 
-export const ARRAY_ESTANDAR = [15, 14, 13, 12, 10, 8] as const;
+export const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] as const;
 
-export function datosWizardIniciales(): DatosWizard {
+export function initialWizardData(): WizardData {
   return {
-    edicion: "2014",
-    nombre: "",
-    razaId: null,
-    claseId: null,
-    trasfondoId: null,
-    trasfondoDatos: null,
-    eleccionesCaracteristicaRaza: [],
-    habilidadesClaseElegidas: [],
-    idiomasTrasfondoElegidos: [],
-    bonificadorTrasfondo: { modo: "reparto", mas2: null, mas1: null },
-    doteOrigen: { modo: "catalogo", doteElegida: null, manualNombre: "", manualDescripcion: "" },
-    metodoPuntuaciones: "array",
-    puntuacionesBase: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 },
+    edition: "2014",
+    name: "",
+    raceId: null,
+    classId: null,
+    backgroundId: null,
+    backgroundData: null,
+    raceAbilityChoices: [],
+    chosenClassSkills: [],
+    chosenBackgroundLanguages: [],
+    backgroundBonus: { mode: "split", plus2: null, plus1: null },
+    originFeat: { mode: "catalog", chosenFeat: null, manualName: "", manualDescription: "" },
+    scoreMethod: "array",
+    baseScores: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 },
   };
 }

@@ -1,6 +1,6 @@
 export type DomainErrorKind = "validation" | "not_found" | "conflict" | "unauthorized" | "forbidden" | "unavailable";
 
-/** Error de negocio: lo lanza el dominio/aplicación y la capa HTTP lo traduce a un status. */
+/** Business error: thrown by the domain/application layers and translated to a status by the HTTP layer. */
 export class DomainError extends Error {
   constructor(
     readonly kind: DomainErrorKind,
@@ -12,7 +12,7 @@ export class DomainError extends Error {
   }
 }
 
-export const STATUS_POR_TIPO: Record<DomainErrorKind, number> = {
+export const STATUS_BY_KIND: Record<DomainErrorKind, number> = {
   validation: 422,
   not_found: 404,
   conflict: 409,

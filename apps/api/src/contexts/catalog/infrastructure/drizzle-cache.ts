@@ -8,8 +8,8 @@ export class DrizzleCatalogCache implements CatalogCache {
   constructor(private db: Db) {}
 
   async get(key: string) {
-    const [fila] = await this.db.select().from(catalogCache).where(eq(catalogCache.key, key)).limit(1);
-    return fila ? { payload: fila.payload as unknown[], fetchedAt: fila.fetchedAt } : null;
+    const [row] = await this.db.select().from(catalogCache).where(eq(catalogCache.key, key)).limit(1);
+    return row ? { payload: row.payload as unknown[], fetchedAt: row.fetchedAt } : null;
   }
 
   async set(key: string, payload: unknown[], fetchedAt: Date) {

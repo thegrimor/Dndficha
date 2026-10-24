@@ -1,4 +1,4 @@
-# Contexto de build: la raíz del monorepo (Railway: Dockerfile path = apps/api/Dockerfile).
+# Build context: the monorepo root (Railway: Dockerfile path = apps/api/Dockerfile).
 FROM node:22-alpine AS build
 WORKDIR /repo
 COPY package.json package-lock.json ./

@@ -1,6 +1,6 @@
 import { defineConfig } from "drizzle-kit";
 
-// Cada bounded context declara su esquema en infrastructure/schema.ts.
+// Each bounded context declares its schema in infrastructure/schema.ts.
 export default defineConfig({
   dialect: "postgresql",
   schema: "./src/contexts/*/infrastructure/schema.ts",

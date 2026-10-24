@@ -1,4 +1,4 @@
-export interface RespuestaPaginadaOpen5e<T> {
+export interface Open5ePagedResponse<T> {
   count: number;
   next: string | null;
   previous: string | null;

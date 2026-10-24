@@ -1,301 +1,301 @@
-import { CLASES_SRD } from "@dndficha/rules";
+import { CLASSES_SRD } from "@dndficha/rules";
 import type { InjectOptions } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { ACOLITO_2024, crearApp, gatewayFalso, registrar } from "./helpers";
+import { ACOLYTE_2024, createApp, fakeGateway, registerUser } from "./helpers";
 
-let ctx: Awaited<ReturnType<typeof crearApp>>;
-const gateway = gatewayFalso({ "backgrounds:2024": [ACOLITO_2024] });
+let ctx: Awaited<ReturnType<typeof createApp>>;
+const gateway = fakeGateway({ "backgrounds:2024": [ACOLYTE_2024] });
 
 beforeAll(async () => {
-  ctx = await crearApp({ gateway });
+  ctx = await createApp({ gateway });
 });
-afterAll(() => ctx.cerrar());
+afterAll(() => ctx.close());
 
-const inyectar = (opts: InjectOptions) => ctx.app.inject(opts);
+const inject = (opts: InjectOptions) => ctx.app.inject(opts);
 
 describe("health", () => {
-  it("responde ok con la base disponible", async () => {
-    const res = await inyectar({ method: "GET", url: "/health" });
+  it("responds ok when the database is available", async () => {
+    const res = await inject({ method: "GET", url: "/health" });
     expect(res.statusCode).toBe(200);
   });
 });
 
 describe("identity", () => {
-  it("registra, devuelve la sesión y permite /auth/me por Bearer y por cookie", async () => {
-    const res = await inyectar({
+  it("registers, returns the session and allows /auth/me by Bearer and by cookie", async () => {
+    const res = await inject({
       method: "POST",
       url: "/auth/register",
-      payload: { email: "Ana@Example.com", username: "ana", password: "contraseña-segura" },
+      payload: { email: "Ana@Example.com", username: "ana", password: "secure-password-1" },
     });
     expect(res.statusCode).toBe(201);
     const cookie = res.cookies.find((c) => c.name === "sid")!;
     expect(cookie.httpOnly).toBe(true);
 
-    const porCookie = await inyectar({ method: "GET", url: "/auth/me", cookies: { sid: cookie.value } });
-    expect(porCookie.json().user.email).toBe("ana@example.com");
+    const byCookie = await inject({ method: "GET", url: "/auth/me", cookies: { sid: cookie.value } });
+    expect(byCookie.json().user.email).toBe("ana@example.com");
 
-    const porBearer = await inyectar({ method: "GET", url: "/auth/me", headers: { authorization: `Bearer ${res.json().token}` } });
-    expect(porBearer.statusCode).toBe(200);
+    const byBearer = await inject({ method: "GET", url: "/auth/me", headers: { authorization: `Bearer ${res.json().token}` } });
+    expect(byBearer.statusCode).toBe(200);
   });
 
-  it("rechaza correo duplicado, contraseñas cortas y credenciales erróneas", async () => {
-    const payload = { email: "dup@example.com", username: "dup", password: "contraseña-segura" };
-    expect((await inyectar({ method: "POST", url: "/auth/register", payload })).statusCode).toBe(201);
-    expect((await inyectar({ method: "POST", url: "/auth/register", payload })).statusCode).toBe(409);
-    expect((await inyectar({ method: "POST", url: "/auth/register", payload: { ...payload, email: "x@example.com", password: "corta" } })).statusCode).toBe(422);
-    expect((await inyectar({ method: "POST", url: "/auth/login", payload: { email: "dup@example.com", password: "otra-cosa-larga" } })).statusCode).toBe(401);
-    expect((await inyectar({ method: "POST", url: "/auth/login", payload: { email: "nadie@example.com", password: "otra-cosa-larga" } })).statusCode).toBe(401);
-    expect((await inyectar({ method: "POST", url: "/auth/login", payload: { email: "dup@example.com", password: "contraseña-segura" } })).statusCode).toBe(200);
+  it("rejects a duplicate email, short passwords and wrong credentials", async () => {
+    const payload = { email: "dup@example.com", username: "dup", password: "secure-password-1" };
+    expect((await inject({ method: "POST", url: "/auth/register", payload })).statusCode).toBe(201);
+    expect((await inject({ method: "POST", url: "/auth/register", payload })).statusCode).toBe(409);
+    expect((await inject({ method: "POST", url: "/auth/register", payload: { ...payload, email: "x@example.com", password: "corta" } })).statusCode).toBe(422);
+    expect((await inject({ method: "POST", url: "/auth/login", payload: { email: "dup@example.com", password: "something-else-long" } })).statusCode).toBe(401);
+    expect((await inject({ method: "POST", url: "/auth/login", payload: { email: "nadie@example.com", password: "something-else-long" } })).statusCode).toBe(401);
+    expect((await inject({ method: "POST", url: "/auth/login", payload: { email: "dup@example.com", password: "secure-password-1" } })).statusCode).toBe(200);
   });
 
-  it("invalida la sesión al cerrar sesión", async () => {
-    const { auth } = await registrar(ctx.app);
-    expect((await inyectar({ method: "POST", url: "/auth/logout", headers: auth })).statusCode).toBe(204);
-    expect((await inyectar({ method: "GET", url: "/auth/me", headers: auth })).statusCode).toBe(401);
+  it("invalidates the session on sign out", async () => {
+    const { auth } = await registerUser(ctx.app);
+    expect((await inject({ method: "POST", url: "/auth/logout", headers: auth })).statusCode).toBe(204);
+    expect((await inject({ method: "GET", url: "/auth/me", headers: auth })).statusCode).toBe(401);
   });
 
-  it("exige sesión en las rutas protegidas", async () => {
-    expect((await inyectar({ method: "GET", url: "/characters" })).statusCode).toBe(401);
-    expect((await inyectar({ method: "GET", url: "/catalog/spells" })).statusCode).toBe(401);
+  it("requires a session on protected routes", async () => {
+    expect((await inject({ method: "GET", url: "/characters" })).statusCode).toBe(401);
+    expect((await inject({ method: "GET", url: "/catalog/spells" })).statusCode).toBe(401);
   });
 });
 
-describe("recuperación de contraseña (sin correo)", () => {
+describe("password recovery (no email)", () => {
   const ADMIN = "a".repeat(40);
-  let admin: Awaited<ReturnType<typeof crearApp>>;
+  let admin: Awaited<ReturnType<typeof createApp>>;
   beforeAll(async () => {
-    admin = await crearApp({ env: { ADMIN_TOKEN: ADMIN, WEB_URL: "https://dndficha.example" } });
+    admin = await createApp({ env: { ADMIN_TOKEN: ADMIN, WEB_URL: "https://dndficha.example" } });
   });
-  afterAll(() => admin.cerrar());
+  afterAll(() => admin.close());
 
-  const registrarEn = (c: typeof admin, email: string) =>
-    c.app.inject({ method: "POST", url: "/auth/register", payload: { email, username: "amigo", password: "contraseña-vieja" } });
-  const generar = (c: typeof admin, email: string, token = ADMIN) =>
+  const registerIn = (c: typeof admin, email: string) =>
+    c.app.inject({ method: "POST", url: "/auth/register", payload: { email, username: "amigo", password: "old-password-1" } });
+  const generate = (c: typeof admin, email: string, token = ADMIN) =>
     c.app.inject({ method: "POST", url: "/admin/reset-tokens", headers: { "x-admin-token": token }, payload: { email } });
 
-  it("el admin genera un enlace de un solo uso y el usuario fija una contraseña nueva", async () => {
-    const reg = await registrarEn(admin, "amigo@example.com");
-    const sesionVieja = reg.json().token;
+  it("the admin generates a single-use link and the user sets a new password", async () => {
+    const reg = await registerIn(admin, "amigo@example.com");
+    const oldSession = reg.json().token;
 
-    const res = await generar(admin, "Amigo@Example.com");
+    const res = await generate(admin, "Amigo@Example.com");
     expect(res.statusCode).toBe(200);
     const { token, url } = res.json();
     expect(url).toBe(`https://dndficha.example/restablecer?token=${token}`);
 
     const reset = (password: string) => admin.app.inject({ method: "POST", url: "/auth/reset-password", payload: { token, password } });
     expect((await reset("corta")).statusCode).toBe(422);
-    expect((await reset("contraseña-nueva-1")).statusCode).toBe(204);
-    // un solo uso
-    expect((await reset("otra-contraseña-2")).statusCode).toBe(422);
+    expect((await reset("new-password-1")).statusCode).toBe(204);
+    // single use
+    expect((await reset("other-password-2")).statusCode).toBe(422);
 
-    // la contraseña vieja ya no vale, la nueva sí, y las sesiones anteriores se cierran
+    // the old password no longer works, the new one does, and earlier sessions are closed
     const login = (password: string) => admin.app.inject({ method: "POST", url: "/auth/login", payload: { email: "amigo@example.com", password } });
-    expect((await login("contraseña-vieja")).statusCode).toBe(401);
-    expect((await login("contraseña-nueva-1")).statusCode).toBe(200);
-    expect((await admin.app.inject({ method: "GET", url: "/auth/me", headers: { authorization: `Bearer ${sesionVieja}` } })).statusCode).toBe(401);
+    expect((await login("old-password-1")).statusCode).toBe(401);
+    expect((await login("new-password-1")).statusCode).toBe(200);
+    expect((await admin.app.inject({ method: "GET", url: "/auth/me", headers: { authorization: `Bearer ${oldSession}` } })).statusCode).toBe(401);
   });
 
-  it("un enlace nuevo anula el anterior y los enlaces caducan", async () => {
-    await registrarEn(admin, "otro@example.com");
-    const primero = (await generar(admin, "otro@example.com")).json().token;
-    const segundo = (await generar(admin, "otro@example.com")).json().token;
-    const reset = (token: string) => admin.app.inject({ method: "POST", url: "/auth/reset-password", payload: { token, password: "contraseña-nueva-1" } });
+  it("a new link invalidates the previous one and unknown tokens are rejected", async () => {
+    await registerIn(admin, "otro@example.com");
+    const first = (await generate(admin, "otro@example.com")).json().token;
+    const second = (await generate(admin, "otro@example.com")).json().token;
+    const reset = (token: string) => admin.app.inject({ method: "POST", url: "/auth/reset-password", payload: { token, password: "new-password-1" } });
 
-    expect((await reset(primero)).statusCode).toBe(422);
+    expect((await reset(first)).statusCode).toBe(422);
     expect((await reset("inventado")).statusCode).toBe(422);
-    expect((await reset(segundo)).statusCode).toBe(204);
+    expect((await reset(second)).statusCode).toBe(204);
   });
 
-  it("protege la ruta de administración", async () => {
-    expect((await generar(admin, "amigo@example.com", "b".repeat(40))).statusCode).toBe(403);
-    expect((await generar(admin, "amigo@example.com", "")).statusCode).toBe(403);
-    expect((await generar(admin, "nadie@example.com")).statusCode).toBe(404);
+  it("protects the admin route", async () => {
+    expect((await generate(admin, "amigo@example.com", "b".repeat(40))).statusCode).toBe(403);
+    expect((await generate(admin, "amigo@example.com", "")).statusCode).toBe(403);
+    expect((await generate(admin, "nadie@example.com")).statusCode).toBe(404);
   });
 
-  it("la ruta de administración no existe sin ADMIN_TOKEN", async () => {
-    const res = await inyectar({ method: "POST", url: "/admin/reset-tokens", headers: { "x-admin-token": ADMIN }, payload: { email: "x@example.com" } });
+  it("the admin route does not exist without ADMIN_TOKEN", async () => {
+    const res = await inject({ method: "POST", url: "/admin/reset-tokens", headers: { "x-admin-token": ADMIN }, payload: { email: "x@example.com" } });
     expect(res.statusCode).toBe(404);
   });
 });
 
 describe("characters", () => {
-  it("crea, edita la ficha completa y la lee de vuelta", async () => {
-    const { auth } = await registrar(ctx.app);
-    const creado = (await inyectar({ method: "POST", url: "/characters", headers: auth, payload: { name: "Thorin" } })).json().character;
-    expect(creado.sheet.edicion).toBe("2014");
-    expect(creado.is_public).toBe(false);
+  it("creates, edits the full sheet and reads it back", async () => {
+    const { auth } = await registerUser(ctx.app);
+    const created = (await inject({ method: "POST", url: "/characters", headers: auth, payload: { name: "Thorin" } })).json().character;
+    expect(created.sheet.edition).toBe("2014");
+    expect(created.is_public).toBe(false);
 
     const sheet = {
-      ...creado.sheet,
-      abilityScores: { ...creado.sheet.abilityScores, str: 18 },
-      inventory: [{ slug: "espada", nombre: "Espada", tipo: "Arma", fuente: "manual" }],
-      spells: { slots: { "1": { total: 2, used: 0 } }, known: [{ slug: "luz", nombre: "Luz", nivel: 0, fuente: "manual" }] },
+      ...created.sheet,
+      abilityScores: { ...created.sheet.abilityScores, str: 18 },
+      inventory: [{ slug: "espada", name: "Espada", type: "Arma", source: "manual" }],
+      spells: { slots: { "1": { total: 2, used: 0 } }, known: [{ slug: "luz", name: "Luz", level: 0, source: "manual" }] },
     };
-    const res = await inyectar({ method: "PATCH", url: `/characters/${creado.id}`, headers: auth, payload: { name: "Thorin II", level: 3, sheet } });
+    const res = await inject({ method: "PATCH", url: `/characters/${created.id}`, headers: auth, payload: { name: "Thorin II", level: 3, sheet } });
     expect(res.statusCode).toBe(200);
 
-    const leido = (await inyectar({ method: "GET", url: `/characters/${creado.id}`, headers: auth })).json().character;
-    expect(leido.name).toBe("Thorin II");
-    expect(leido.level).toBe(3);
-    expect(leido.sheet.abilityScores.str).toBe(18);
-    expect(leido.sheet.inventory[0]).toMatchObject({ slug: "espada", cantidad: 1, equipado: false });
-    expect(leido.sheet.spells.known[0].nombre).toBe("Luz");
-    expect(leido.sheet.spells.slots["1"]).toEqual({ total: 2, used: 0 });
+    const fetched = (await inject({ method: "GET", url: `/characters/${created.id}`, headers: auth })).json().character;
+    expect(fetched.name).toBe("Thorin II");
+    expect(fetched.level).toBe(3);
+    expect(fetched.sheet.abilityScores.str).toBe(18);
+    expect(fetched.sheet.inventory[0]).toMatchObject({ slug: "espada", quantity: 1, equipped: false });
+    expect(fetched.sheet.spells.known[0].name).toBe("Luz");
+    expect(fetched.sheet.spells.slots["1"]).toEqual({ total: 2, used: 0 });
   });
 
-  it("no deja ver ni tocar fichas de otro usuario", async () => {
-    const a = await registrar(ctx.app);
-    const b = await registrar(ctx.app);
-    const ficha = (await inyectar({ method: "POST", url: "/characters", headers: a.auth, payload: { name: "Privado" } })).json().character;
+  it("does not let users see or touch another user's sheets", async () => {
+    const a = await registerUser(ctx.app);
+    const b = await registerUser(ctx.app);
+    const character = (await inject({ method: "POST", url: "/characters", headers: a.auth, payload: { name: "Privado" } })).json().character;
 
-    expect((await inyectar({ method: "GET", url: `/characters/${ficha.id}`, headers: b.auth })).statusCode).toBe(404);
-    expect((await inyectar({ method: "PATCH", url: `/characters/${ficha.id}`, headers: b.auth, payload: { name: "x" } })).statusCode).toBe(404);
-    expect((await inyectar({ method: "DELETE", url: `/characters/${ficha.id}`, headers: b.auth })).statusCode).toBe(404);
-    expect((await inyectar({ method: "POST", url: `/characters/${ficha.id}/inventory`, headers: b.auth, payload: { item: { slug: "a", nombre: "A", tipo: "x", fuente: "manual" } } })).statusCode).toBe(404);
-    expect((await inyectar({ method: "PUT", url: `/characters/${ficha.id}/share`, headers: b.auth })).statusCode).toBe(404);
-    expect((await inyectar({ method: "GET", url: "/characters", headers: b.auth })).json().characters).toHaveLength(0);
+    expect((await inject({ method: "GET", url: `/characters/${character.id}`, headers: b.auth })).statusCode).toBe(404);
+    expect((await inject({ method: "PATCH", url: `/characters/${character.id}`, headers: b.auth, payload: { name: "x" } })).statusCode).toBe(404);
+    expect((await inject({ method: "DELETE", url: `/characters/${character.id}`, headers: b.auth })).statusCode).toBe(404);
+    expect((await inject({ method: "POST", url: `/characters/${character.id}/inventory`, headers: b.auth, payload: { item: { slug: "a", name: "A", type: "x", source: "manual" } } })).statusCode).toBe(404);
+    expect((await inject({ method: "PUT", url: `/characters/${character.id}/share`, headers: b.auth })).statusCode).toBe(404);
+    expect((await inject({ method: "GET", url: "/characters", headers: b.auth })).json().characters).toHaveLength(0);
   });
 
-  it("aplica las invariantes del dominio", async () => {
-    const { auth } = await registrar(ctx.app);
-    const ficha = (await inyectar({ method: "POST", url: "/characters", headers: auth, payload: { name: "Reglas" } })).json().character;
-    const patch = (payload: object) => inyectar({ method: "PATCH", url: `/characters/${ficha.id}`, headers: auth, payload });
+  it("enforces the domain invariants", async () => {
+    const { auth } = await registerUser(ctx.app);
+    const character = (await inject({ method: "POST", url: "/characters", headers: auth, payload: { name: "Reglas" } })).json().character;
+    const patch = (payload: object) => inject({ method: "PATCH", url: `/characters/${character.id}`, headers: auth, payload });
 
     expect((await patch({ level: 21 })).statusCode).toBe(422);
-    expect((await patch({ sheet: { ...ficha.sheet, abilityScores: { ...ficha.sheet.abilityScores, str: 31 } } })).statusCode).toBe(422);
-    expect((await patch({ sheet: { ...ficha.sheet, combat: { ...ficha.sheet.combat, hp: { current: 99, max: 10, temp: 0 } } } })).statusCode).toBe(422);
-    expect((await patch({ sheet: { ...ficha.sheet, edicion: "2024" } })).statusCode).toBe(422);
+    expect((await patch({ sheet: { ...character.sheet, abilityScores: { ...character.sheet.abilityScores, str: 31 } } })).statusCode).toBe(422);
+    expect((await patch({ sheet: { ...character.sheet, combat: { ...character.sheet.combat, hp: { current: 99, max: 10, temp: 0 } } } })).statusCode).toBe(422);
+    expect((await patch({ sheet: { ...character.sheet, edition: "2024" } })).statusCode).toBe(422);
   });
 
-  it("al borrar la ficha limpia inventario, hechizos y enlace público", async () => {
-    const { auth } = await registrar(ctx.app);
-    const ficha = (await inyectar({ method: "POST", url: "/characters", headers: auth, payload: { name: "Efímero" } })).json().character;
-    await inyectar({ method: "POST", url: `/characters/${ficha.id}/inventory`, headers: auth, payload: { item: { slug: "a", nombre: "A", tipo: "x", fuente: "manual" } } });
-    const { shareSlug } = (await inyectar({ method: "PUT", url: `/characters/${ficha.id}/share`, headers: auth })).json();
+  it("deleting the sheet cleans up inventory, spells and the public link", async () => {
+    const { auth } = await registerUser(ctx.app);
+    const character = (await inject({ method: "POST", url: "/characters", headers: auth, payload: { name: "Efímero" } })).json().character;
+    await inject({ method: "POST", url: `/characters/${character.id}/inventory`, headers: auth, payload: { item: { slug: "a", name: "A", type: "x", source: "manual" } } });
+    const { shareSlug } = (await inject({ method: "PUT", url: `/characters/${character.id}/share`, headers: auth })).json();
 
-    expect((await inyectar({ method: "DELETE", url: `/characters/${ficha.id}`, headers: auth })).statusCode).toBe(204);
-    expect((await inyectar({ method: "GET", url: `/public/characters/${shareSlug}` })).statusCode).toBe(404);
-    expect((await ctx.container.inventory.listMany([ficha.id])).get(ficha.id)).toBeUndefined();
+    expect((await inject({ method: "DELETE", url: `/characters/${character.id}`, headers: auth })).statusCode).toBe(204);
+    expect((await inject({ method: "GET", url: `/public/characters/${shareSlug}` })).statusCode).toBe(404);
+    expect((await ctx.container.inventory.listMany([character.id])).get(character.id)).toBeUndefined();
   });
 });
 
 describe("sharing", () => {
-  it("expone la ficha por slug sin sesión mientras el enlace esté activo", async () => {
-    const { auth, userId } = await registrar(ctx.app);
-    const ficha = (await inyectar({ method: "POST", url: "/characters", headers: auth, payload: { name: "Público" } })).json().character;
+  it("exposes the sheet by slug without a session while the link is enabled", async () => {
+    const { auth, userId } = await registerUser(ctx.app);
+    const character = (await inject({ method: "POST", url: "/characters", headers: auth, payload: { name: "Público" } })).json().character;
 
-    const { shareSlug } = (await inyectar({ method: "PUT", url: `/characters/${ficha.id}/share`, headers: auth })).json();
-    const publica = await inyectar({ method: "GET", url: `/public/characters/${shareSlug}` });
-    expect(publica.statusCode).toBe(200);
-    expect(publica.json().character.name).toBe("Público");
-    expect(publica.body).not.toContain(userId);
+    const { shareSlug } = (await inject({ method: "PUT", url: `/characters/${character.id}/share`, headers: auth })).json();
+    const publicResponse = await inject({ method: "GET", url: `/public/characters/${shareSlug}` });
+    expect(publicResponse.statusCode).toBe(200);
+    expect(publicResponse.json().character.name).toBe("Público");
+    expect(publicResponse.body).not.toContain(userId);
 
-    // Reactivar conserva el mismo slug
-    await inyectar({ method: "DELETE", url: `/characters/${ficha.id}/share`, headers: auth });
-    expect((await inyectar({ method: "GET", url: `/public/characters/${shareSlug}` })).statusCode).toBe(404);
-    const otra = (await inyectar({ method: "PUT", url: `/characters/${ficha.id}/share`, headers: auth })).json();
-    expect(otra.shareSlug).toBe(shareSlug);
+    // Re-enabling keeps the same slug
+    await inject({ method: "DELETE", url: `/characters/${character.id}/share`, headers: auth });
+    expect((await inject({ method: "GET", url: `/public/characters/${shareSlug}` })).statusCode).toBe(404);
+    const other = (await inject({ method: "PUT", url: `/characters/${character.id}/share`, headers: auth })).json();
+    expect(other.shareSlug).toBe(shareSlug);
 
-    const leida = (await inyectar({ method: "GET", url: `/characters/${ficha.id}`, headers: auth })).json().character;
-    expect(leida).toMatchObject({ is_public: true, share_slug: shareSlug });
+    const fetched = (await inject({ method: "GET", url: `/characters/${character.id}`, headers: auth })).json().character;
+    expect(fetched).toMatchObject({ is_public: true, share_slug: shareSlug });
   });
 });
 
-describe("inventory y spellcasting", () => {
-  it("evita duplicados y permite quitar", async () => {
-    const { auth } = await registrar(ctx.app);
-    const ficha = (await inyectar({ method: "POST", url: "/characters", headers: auth, payload: { name: "Mochila" } })).json().character;
-    const item = { slug: "pocion", nombre: "Poción", tipo: "Poción", fuente: "open5e", datos: { name: "Poción" } };
-    const url = `/characters/${ficha.id}/inventory`;
+describe("inventory and spellcasting", () => {
+  it("prevents duplicates and allows removal", async () => {
+    const { auth } = await registerUser(ctx.app);
+    const character = (await inject({ method: "POST", url: "/characters", headers: auth, payload: { name: "Mochila" } })).json().character;
+    const item = { slug: "pocion", name: "Poción", type: "Poción", source: "open5e", data: { name: "Poción" } };
+    const url = `/characters/${character.id}/inventory`;
 
-    expect((await inyectar({ method: "POST", url, headers: auth, payload: { item } })).statusCode).toBe(201);
-    expect((await inyectar({ method: "POST", url, headers: auth, payload: { item } })).statusCode).toBe(409);
-    expect((await inyectar({ method: "DELETE", url: `${url}/pocion`, headers: auth })).statusCode).toBe(204);
-    expect((await inyectar({ method: "GET", url, headers: auth })).json().items).toHaveLength(0);
+    expect((await inject({ method: "POST", url, headers: auth, payload: { item } })).statusCode).toBe(201);
+    expect((await inject({ method: "POST", url, headers: auth, payload: { item } })).statusCode).toBe(409);
+    expect((await inject({ method: "DELETE", url: `${url}/pocion`, headers: auth })).statusCode).toBe(204);
+    expect((await inject({ method: "GET", url, headers: auth })).json().items).toHaveLength(0);
   });
 
-  it("gasta espacios de conjuro y los recupera con un descanso largo", async () => {
-    const { auth } = await registrar(ctx.app);
-    const ficha = (await inyectar({ method: "POST", url: "/characters", headers: auth, payload: { name: "Mago" } })).json().character;
-    await inyectar({ method: "PATCH", url: `/characters/${ficha.id}`, headers: auth, payload: { sheet: { ...ficha.sheet, spells: { slots: { "1": { total: 1, used: 0 } }, known: [] } } } });
+  it("spends spell slots and recovers them with a long rest", async () => {
+    const { auth } = await registerUser(ctx.app);
+    const character = (await inject({ method: "POST", url: "/characters", headers: auth, payload: { name: "Mago" } })).json().character;
+    await inject({ method: "PATCH", url: `/characters/${character.id}`, headers: auth, payload: { sheet: { ...character.sheet, spells: { slots: { "1": { total: 1, used: 0 } }, known: [] } } } });
 
-    const base = `/characters/${ficha.id}/spellbook`;
-    expect((await inyectar({ method: "POST", url: `${base}/slots/1/use`, headers: auth })).statusCode).toBe(200);
-    expect((await inyectar({ method: "POST", url: `${base}/slots/1/use`, headers: auth })).statusCode).toBe(409);
-    const tras = await inyectar({ method: "POST", url: `${base}/long-rest`, headers: auth });
-    expect(tras.json().spellbook.slots["1"].used).toBe(0);
+    const base = `/characters/${character.id}/spellbook`;
+    expect((await inject({ method: "POST", url: `${base}/slots/1/use`, headers: auth })).statusCode).toBe(200);
+    expect((await inject({ method: "POST", url: `${base}/slots/1/use`, headers: auth })).statusCode).toBe(409);
+    const afterRest = await inject({ method: "POST", url: `${base}/long-rest`, headers: auth });
+    expect(afterRest.json().spellbook.slots["1"].used).toBe(0);
   });
 
-  it("no admite hechizos duplicados", async () => {
-    const { auth } = await registrar(ctx.app);
-    const ficha = (await inyectar({ method: "POST", url: "/characters", headers: auth, payload: { name: "Bardo" } })).json().character;
-    const spell = { slug: "luz", nombre: "Luz", nivel: 0, fuente: "open5e", datos: {} };
-    const url = `/characters/${ficha.id}/spellbook/spells`;
-    expect((await inyectar({ method: "POST", url, headers: auth, payload: { spell } })).statusCode).toBe(201);
-    expect((await inyectar({ method: "POST", url, headers: auth, payload: { spell } })).statusCode).toBe(409);
+  it("does not accept duplicate spells", async () => {
+    const { auth } = await registerUser(ctx.app);
+    const character = (await inject({ method: "POST", url: "/characters", headers: auth, payload: { name: "Bardo" } })).json().character;
+    const spell = { slug: "luz", name: "Luz", level: 0, source: "open5e", data: {} };
+    const url = `/characters/${character.id}/spellbook/spells`;
+    expect((await inject({ method: "POST", url, headers: auth, payload: { spell } })).statusCode).toBe(201);
+    expect((await inject({ method: "POST", url, headers: auth, payload: { spell } })).statusCode).toBe(409);
   });
 });
 
 describe("character creation (wizard)", () => {
-  const clase = CLASES_SRD.find((c) => c.id === "guerrero")!;
-  const solicitud = () => ({
-    edicion: "2024",
-    nombre: "Aldric",
-    razaId: "humano",
-    claseId: "guerrero",
-    trasfondoId: "srd-2024_acolyte",
-    eleccionesCaracteristicaRaza: [],
-    habilidadesClaseElegidas: clase.habilidadesDisponibles.slice(0, clase.numHabilidadesElegibles),
-    idiomasTrasfondoElegidos: [],
-    bonificadorTrasfondo: { modo: "reparto", mas2: "int", mas1: "wis" },
-    doteOrigen: { modo: "catalogo", doteElegida: { nombre: "Alerta", descripcion: "manipulada por el cliente" }, manualNombre: "", manualDescripcion: "" },
-    metodoPuntuaciones: "array",
-    puntuacionesBase: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
+  const characterClass = CLASSES_SRD.find((c) => c.id === "fighter")!;
+  const input = () => ({
+    edition: "2024",
+    name: "Aldric",
+    raceId: "human",
+    classId: "fighter",
+    backgroundId: "srd-2024_acolyte",
+    raceAbilityChoices: [],
+    chosenClassSkills: characterClass.availableSkills.slice(0, characterClass.skillChoiceCount),
+    chosenBackgroundLanguages: [],
+    backgroundBonus: { mode: "split", plus2: "int", plus1: "wis" },
+    originFeat: { mode: "catalog", chosenFeat: { name: "Alerta", description: "manipulada por el cliente" }, manualName: "", manualDescription: "" },
+    scoreMethod: "array",
+    baseScores: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
   });
 
-  it("construye la ficha de nivel 1 en el servidor", async () => {
-    const { auth } = await registrar(ctx.app);
-    const res = await inyectar({ method: "POST", url: "/character-creation", headers: auth, payload: solicitud() });
+  it("builds the level 1 sheet on the server", async () => {
+    const { auth } = await registerUser(ctx.app);
+    const res = await inject({ method: "POST", url: "/character-creation", headers: auth, payload: input() });
     expect(res.statusCode).toBe(201);
     const { character } = res.json();
 
-    expect(character).toMatchObject({ name: "Aldric", class: clase.nombre, level: 1, background: "Acolyte" });
-    expect(character.sheet.edicion).toBe("2024");
-    // 12 + 2 (INT) y 10 + 1 (WIS) por el bonificador del trasfondo 2024
+    expect(character).toMatchObject({ name: "Aldric", class: characterClass.name, level: 1, background: "Acolyte" });
+    expect(character.sheet.edition).toBe("2024");
+    // 12 + 2 (INT) and 10 + 1 (WIS) from the 2024 background bonus
     expect(character.sheet.abilityScores).toMatchObject({ int: 14, wis: 11 });
-    expect(character.sheet.combat.hp.max).toBe(clase.dadoGolpe + 1);
-    // La dote sale del catálogo del servidor, no del texto que mandó el cliente
-    const dote = character.sheet.features.find((f: { nombre: string }) => f.nombre === "Alerta");
-    expect(dote.descripcion).not.toContain("manipulada");
+    expect(character.sheet.combat.hp.max).toBe(characterClass.hitDie + 1);
+    // The feat comes from the server's catalog, not from the text the client sent
+    const feat = character.sheet.features.find((f: { name: string }) => f.name === "Alerta");
+    expect(feat.description).not.toContain("manipulada");
   });
 
-  it("rechaza elecciones que incumplen las reglas", async () => {
-    const { auth } = await registrar(ctx.app);
-    const enviar = (cambios: object) => inyectar({ method: "POST", url: "/character-creation", headers: auth, payload: { ...solicitud(), ...cambios } });
+  it("rejects choices that break the rules", async () => {
+    const { auth } = await registerUser(ctx.app);
+    const submit = (changes: object) => inject({ method: "POST", url: "/character-creation", headers: auth, payload: { ...input(), ...changes } });
 
-    expect((await enviar({ puntuacionesBase: { str: 18, dex: 18, con: 18, int: 18, wis: 18, cha: 18 } })).statusCode).toBe(422);
-    expect((await enviar({ habilidadesClaseElegidas: ["arcana", "arcana"] })).statusCode).toBe(422);
-    expect((await enviar({ bonificadorTrasfondo: { modo: "reparto", mas2: "int", mas1: "int" } })).statusCode).toBe(422);
-    expect((await enviar({ razaId: "inventada" })).statusCode).toBe(422);
-    expect((await enviar({ trasfondoId: "no-existe" })).statusCode).toBe(404);
-    expect((await enviar({ nombre: "   " })).statusCode).toBe(422);
+    expect((await submit({ baseScores: { str: 18, dex: 18, con: 18, int: 18, wis: 18, cha: 18 } })).statusCode).toBe(422);
+    expect((await submit({ chosenClassSkills: ["arcana", "arcana"] })).statusCode).toBe(422);
+    expect((await submit({ backgroundBonus: { mode: "split", plus2: "int", plus1: "int" } })).statusCode).toBe(422);
+    expect((await submit({ raceId: "invented" })).statusCode).toBe(422);
+    expect((await submit({ backgroundId: "no-existe" })).statusCode).toBe(404);
+    expect((await submit({ name: "   " })).statusCode).toBe(422);
   });
 });
 
 describe("catalog", () => {
-  it("sirve desde la caché persistente en vez de repetir la llamada a Open5e", async () => {
-    const { auth } = await registrar(ctx.app);
-    const antes = gateway.llamadas;
-    const a = await inyectar({ method: "GET", url: "/catalog/backgrounds?edicion=2024", headers: auth });
-    const b = await inyectar({ method: "GET", url: "/catalog/backgrounds?edicion=2024", headers: auth });
+  it("serves from the persistent cache instead of repeating the Open5e call", async () => {
+    const { auth } = await registerUser(ctx.app);
+    const before = gateway.calls;
+    const a = await inject({ method: "GET", url: "/catalog/backgrounds?edition=2024", headers: auth });
+    const b = await inject({ method: "GET", url: "/catalog/backgrounds?edition=2024", headers: auth });
     expect(a.json().results).toHaveLength(1);
     expect(b.json().results).toHaveLength(1);
-    expect(gateway.llamadas - antes).toBeLessThanOrEqual(1);
+    expect(gateway.calls - before).toBeLessThanOrEqual(1);
   });
 
-  it("rechaza recursos desconocidos", async () => {
-    const { auth } = await registrar(ctx.app);
-    expect((await inyectar({ method: "GET", url: "/catalog/inventado", headers: auth })).statusCode).toBe(400);
+  it("rejects unknown resources", async () => {
+    const { auth } = await registerUser(ctx.app);
+    expect((await inject({ method: "GET", url: "/catalog/inventado", headers: auth })).statusCode).toBe(400);
   });
 });

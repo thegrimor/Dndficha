@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // @dndficha/rules se publica como TypeScript fuente dentro del monorepo.
+  // @dndficha/rules is shipped as TypeScript source inside the monorepo.
   transpilePackages: ["@dndficha/rules"],
 };
 

@@ -1,47 +1,47 @@
 import type { CharacterAccess } from "../../../shared-kernel/auth";
 import { DomainError } from "../../../shared-kernel/domain-error";
-import { generarSlug, type ShareLinkRepository } from "../domain/share-link";
+import { generateSlug, type ShareLinkRepository } from "../domain/share-link";
 
 export class SharingService {
   constructor(
     private repo: ShareLinkRepository,
     private access: CharacterAccess,
-    private generar: () => string = generarSlug
+    private generate: () => string = generateSlug
   ) {}
 
   async statusMany(characterIds: string[]) {
-    const enlaces = await this.repo.findMany(characterIds);
-    return new Map(enlaces.map((e) => [e.characterId, { isPublic: e.enabled, shareSlug: e.slug }]));
+    const links = await this.repo.findMany(characterIds);
+    return new Map(links.map((e) => [e.characterId, { isPublic: e.enabled, shareSlug: e.slug }]));
   }
 
-  /** Activa el enlace público (conserva el slug si ya existía, para no romper enlaces ya repartidos). */
-  async activar(userId: string, characterId: string): Promise<{ shareSlug: string }> {
+  /** Enables the public link (keeps the slug if it existed, so links already shared do not break). */
+  async enable(userId: string, characterId: string): Promise<{ shareSlug: string }> {
     await this.access.assertOwner(userId, characterId);
-    const existente = await this.repo.findByCharacter(characterId);
-    if (existente) {
+    const existing = await this.repo.findByCharacter(characterId);
+    if (existing) {
       await this.repo.setEnabled(characterId, true);
-      return { shareSlug: existente.slug };
+      return { shareSlug: existing.slug };
     }
-    for (let intento = 0; intento < 5; intento++) {
-      const slug = this.generar();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const slug = this.generate();
       if (await this.repo.insert({ characterId, slug, enabled: true })) return { shareSlug: slug };
     }
     throw new DomainError("conflict", "No se pudo generar un enlace único", "slug_collision");
   }
 
-  async desactivar(userId: string, characterId: string): Promise<void> {
+  async disable(userId: string, characterId: string): Promise<void> {
     await this.access.assertOwner(userId, characterId);
     await this.repo.setEnabled(characterId, false);
   }
 
-  /** Resuelve un slug público a su personaje; solo si el enlace está activo. */
-  async personajeDeSlug(slug: string): Promise<string> {
-    const enlace = await this.repo.findBySlug(slug);
-    if (!enlace?.enabled) throw new DomainError("not_found", "Ficha no encontrada", "share_not_found");
-    return enlace.characterId;
+  /** Resolves a public slug to its character; only if the link is enabled. */
+  async characterIdFromSlug(slug: string): Promise<string> {
+    const link = await this.repo.findBySlug(slug);
+    if (!link?.enabled) throw new DomainError("not_found", "Ficha no encontrada", "share_not_found");
+    return link.characterId;
   }
 
-  eliminarDe(characterId: string) {
+  deleteFor(characterId: string) {
     return this.repo.delete(characterId);
   }
 }

@@ -8,27 +8,27 @@ export class DrizzleInventoryRepository implements InventoryRepository {
   constructor(private db: Db) {}
 
   async listMany(characterIds: string[]) {
-    const mapa = new Map<string, InventoryItem[]>();
-    if (characterIds.length === 0) return mapa;
-    const filas = await this.db
+    const map = new Map<string, InventoryItem[]>();
+    if (characterIds.length === 0) return map;
+    const rows = await this.db
       .select()
       .from(inventoryItems)
       .where(inArray(inventoryItems.characterId, characterIds))
       .orderBy(asc(inventoryItems.position));
-    for (const f of filas) {
-      const lista = mapa.get(f.characterId) ?? [];
-      lista.push({
+    for (const f of rows) {
+      const list = map.get(f.characterId) ?? [];
+      list.push({
         slug: f.slug,
-        nombre: f.name,
-        tipo: f.type,
-        fuente: f.source as InventoryItem["fuente"],
-        datos: f.data ?? undefined,
-        cantidad: f.quantity,
-        equipado: f.equipped,
+        name: f.name,
+        type: f.type,
+        source: f.source as InventoryItem["source"],
+        data: f.data ?? undefined,
+        quantity: f.quantity,
+        equipped: f.equipped,
       });
-      mapa.set(f.characterId, lista);
+      map.set(f.characterId, list);
     }
-    return mapa;
+    return map;
   }
 
   async replace(characterId: string, items: InventoryItem[]) {
@@ -39,12 +39,12 @@ export class DrizzleInventoryRepository implements InventoryRepository {
         items.map((i, position) => ({
           characterId,
           slug: i.slug,
-          name: i.nombre,
-          type: i.tipo,
-          source: i.fuente,
-          data: i.datos ?? null,
-          quantity: i.cantidad,
-          equipped: i.equipado,
+          name: i.name,
+          type: i.type,
+          source: i.source,
+          data: i.data ?? null,
+          quantity: i.quantity,
+          equipped: i.equipped,
           position,
         }))
       );

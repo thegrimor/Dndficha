@@ -1,11 +1,11 @@
 import Link from "next/link";
 
-import { registrarse } from "@/actions/auth";
+import { signUp } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-export default async function RegistroPage({
+export default async function SignupPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>;
@@ -19,7 +19,7 @@ export default async function RegistroPage({
           <CardTitle>Crear cuenta</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={registrarse} className="flex flex-col gap-4">
+          <form action={signUp} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="username" className="text-sm font-medium">
                 Nombre de usuario

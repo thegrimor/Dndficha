@@ -7,7 +7,7 @@ export interface EventBus {
   publish(events: DomainEvent[]): Promise<void>;
 }
 
-/** Bus en memoria: suficiente mientras todos los contextos viven en el mismo proceso. */
+/** In-memory bus: enough while all contexts live in the same process. */
 export class InMemoryEventBus implements EventBus {
   private handlers = new Map<string, Array<(e: DomainEvent) => Promise<void> | void>>();
 

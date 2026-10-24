@@ -6,7 +6,7 @@ export const characters = pgTable(
   "characters",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    /** Id del usuario (contexto Identity). Sin FK a propósito: los contextos solo se referencian por id. */
+    /** User id (Identity context). No FK on purpose: contexts only reference each other by id. */
     ownerId: uuid("owner_id").notNull(),
     name: text("name").notNull(),
     race: text("race"),
@@ -16,7 +16,7 @@ export const characters = pgTable(
     alignment: text("alignment"),
     imageUrl: text("image_url"),
     edition: text("edition").notNull().default("2014"),
-    /** Núcleo de la ficha: puntuaciones, competencias, combate, ataques y rasgos. */
+    /** Core of the sheet: scores, proficiencies, combat, attacks and features. */
     core: jsonb("core").$type<CharacterCore>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

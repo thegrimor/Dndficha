@@ -1,11 +1,11 @@
 import Link from "next/link";
 
-import { restablecerContrasena } from "@/actions/auth";
+import { resetPassword } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-export default async function RestablecerPage({
+export default async function ResetPasswordPage({
   searchParams,
 }: {
   searchParams: Promise<{ token?: string; error?: string }>;
@@ -24,7 +24,7 @@ export default async function RestablecerPage({
               Este enlace no es válido. Pídele a quien administra la app uno nuevo.
             </p>
           ) : (
-            <form action={restablecerContrasena} className="flex flex-col gap-4">
+            <form action={resetPassword} className="flex flex-col gap-4">
               <input type="hidden" name="token" value={token} />
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="password" className="text-sm font-medium">
@@ -33,10 +33,10 @@ export default async function RestablecerPage({
                 <Input id="password" name="password" type="password" required minLength={8} autoComplete="new-password" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="confirmacion" className="text-sm font-medium">
+                <label htmlFor="confirmation" className="text-sm font-medium">
                   Repite la contraseña
                 </label>
-                <Input id="confirmacion" name="confirmacion" type="password" required minLength={8} autoComplete="new-password" />
+                <Input id="confirmation" name="confirmation" type="password" required minLength={8} autoComplete="new-password" />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit">Cambiar contraseña</Button>

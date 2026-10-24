@@ -7,6 +7,6 @@ export default defineConfig({
   platform: "node",
   outDir: "dist",
   clean: true,
-  // El paquete de reglas es TypeScript fuente: se incluye dentro del bundle.
+  // The rules package is TypeScript source: it is bundled in.
   noExternal: ["@dndficha/rules"],
 });

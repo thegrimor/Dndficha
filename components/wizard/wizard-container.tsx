@@ -3,46 +3,46 @@
 import { useState, useTransition } from "react";
 import { unstable_rethrow } from "next/navigation";
 
-import { crearPersonajeDesdeWizard } from "@/actions/wizard";
-import { CARACTERISTICAS } from "@dndficha/rules";
-import { CLASES_SRD, RAZAS_SRD } from "@dndficha/rules";
+import { createCharacterFromWizard } from "@/actions/wizard";
+import { ABILITIES } from "@dndficha/rules";
+import { CLASSES_SRD, RACES_SRD } from "@dndficha/rules";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { ARRAY_ESTANDAR, datosWizardIniciales } from "@/components/wizard/tipos";
-import { PasoEdicion } from "@/components/wizard/paso-edicion";
-import { PasoRaza } from "@/components/wizard/paso-raza";
-import { PasoClase } from "@/components/wizard/paso-clase";
-import { PasoTrasfondo } from "@/components/wizard/paso-trasfondo";
-import { PasoPuntuaciones } from "@/components/wizard/paso-puntuaciones";
-import { PasoResumen } from "@/components/wizard/paso-resumen";
+import { STANDARD_ARRAY, initialWizardData } from "@/components/wizard/types";
+import { EditionStep } from "@/components/wizard/edition-step";
+import { RaceStep } from "@/components/wizard/race-step";
+import { ClassStep } from "@/components/wizard/class-step";
+import { BackgroundStep } from "@/components/wizard/background-step";
+import { ScoresStep } from "@/components/wizard/scores-step";
+import { SummaryStep } from "@/components/wizard/summary-step";
 
 export function WizardContainer() {
-  const [paso, setPaso] = useState(0);
-  const [datos, setDatos] = useState(datosWizardIniciales());
-  const pasos = [
+  const [step, setStep] = useState(0);
+  const [data, setData] = useState(initialWizardData());
+  const steps = [
     "Edición",
-    datos.edicion === "2024" ? "Especie" : "Raza",
+    data.edition === "2024" ? "Especie" : "Raza",
     "Clase",
     "Trasfondo",
     "Puntuaciones",
     "Resumen",
   ] as const;
   const [error, setError] = useState<string | null>(null);
-  const [pendiente, iniciarTransicion] = useTransition();
+  const [pending, startTransition] = useTransition();
 
-  function actualizar(cambios: Partial<typeof datos>) {
-    setDatos((prev) => ({ ...prev, ...cambios }));
+  function update(changes: Partial<typeof data>) {
+    setData((prev) => ({ ...prev, ...changes }));
   }
 
-  const puedeAvanzar = calcularPuedeAvanzar(paso, datos);
+  const canAdvance = canAdvanceStep(step, data);
 
-  function confirmar() {
+  function confirm() {
     setError(null);
-    iniciarTransicion(async () => {
+    startTransition(async () => {
       try {
-        await crearPersonajeDesdeWizard(datos);
+        await createCharacterFromWizard(data);
       } catch (err) {
         unstable_rethrow(err);
         setError(err instanceof Error ? err.message : "No se pudo crear el personaje.");
@@ -55,43 +55,43 @@ export function WizardContainer() {
       <CardHeader>
         <CardTitle>Nuevo personaje</CardTitle>
         <div className="flex flex-wrap gap-2 pt-1">
-          {pasos.map((nombrePaso, indice) => (
+          {steps.map((stepName, index) => (
             <span
-              key={nombrePaso}
+              key={stepName}
               className={cn(
                 "rounded-full px-3 py-1 text-xs font-medium",
-                indice === paso
+                index === step
                   ? "bg-primary text-primary-foreground"
-                  : indice < paso
+                  : index < step
                     ? "bg-accent text-accent-foreground"
                     : "bg-secondary text-secondary-foreground"
               )}
             >
-              {indice + 1}. {nombrePaso}
+              {index + 1}. {stepName}
             </span>
           ))}
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="nombre" className="text-sm font-medium">
+          <label htmlFor="character-name" className="text-sm font-medium">
             Nombre del personaje
           </label>
           <Input
-            id="nombre"
-            value={datos.nombre}
-            onChange={(e) => actualizar({ nombre: e.target.value })}
+            id="character-name"
+            value={data.name}
+            onChange={(e) => update({ name: e.target.value })}
             placeholder="Ej. Elara Lunanoche"
             autoFocus
           />
         </div>
 
-        {paso === 0 && <PasoEdicion datos={datos} actualizar={actualizar} />}
-        {paso === 1 && <PasoRaza datos={datos} actualizar={actualizar} />}
-        {paso === 2 && <PasoClase datos={datos} actualizar={actualizar} />}
-        {paso === 3 && <PasoTrasfondo datos={datos} actualizar={actualizar} />}
-        {paso === 4 && <PasoPuntuaciones datos={datos} actualizar={actualizar} />}
-        {paso === 5 && <PasoResumen datos={datos} />}
+        {step === 0 && <EditionStep data={data} update={update} />}
+        {step === 1 && <RaceStep data={data} update={update} />}
+        {step === 2 && <ClassStep data={data} update={update} />}
+        {step === 3 && <BackgroundStep data={data} update={update} />}
+        {step === 4 && <ScoresStep data={data} update={update} />}
+        {step === 5 && <SummaryStep data={data} />}
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -99,22 +99,22 @@ export function WizardContainer() {
           <Button
             type="button"
             variant="outline"
-            disabled={paso === 0}
-            onClick={() => setPaso((p) => Math.max(0, p - 1))}
+            disabled={step === 0}
+            onClick={() => setStep((p) => Math.max(0, p - 1))}
           >
             Anterior
           </Button>
-          {paso < pasos.length - 1 ? (
+          {step < steps.length - 1 ? (
             <Button
               type="button"
-              disabled={!puedeAvanzar}
-              onClick={() => setPaso((p) => Math.min(pasos.length - 1, p + 1))}
+              disabled={!canAdvance}
+              onClick={() => setStep((p) => Math.min(steps.length - 1, p + 1))}
             >
               Siguiente
             </Button>
           ) : (
-            <Button type="button" disabled={pendiente} onClick={confirmar}>
-              {pendiente ? "Creando..." : "Confirmar y crear"}
+            <Button type="button" disabled={pending} onClick={confirm}>
+              {pending ? "Creando..." : "Confirmar y crear"}
             </Button>
           )}
         </div>
@@ -123,54 +123,54 @@ export function WizardContainer() {
   );
 }
 
-function calcularPuedeAvanzar(paso: number, datos: ReturnType<typeof datosWizardIniciales>): boolean {
-  if (paso === 0) {
-    return Boolean(datos.edicion);
+function canAdvanceStep(step: number, data: ReturnType<typeof initialWizardData>): boolean {
+  if (step === 0) {
+    return Boolean(data.edition);
   }
 
-  if (paso === 1) {
-    if (!datos.nombre.trim() || !datos.razaId) return false;
-    const raza = RAZAS_SRD.find((r) => r.id === datos.razaId);
-    if (!raza) return false;
+  if (step === 1) {
+    if (!data.name.trim() || !data.raceId) return false;
+    const race = RACES_SRD.find((r) => r.id === data.raceId);
+    if (!race) return false;
     if (
-      datos.edicion === "2014" &&
-      raza.eleccionLibre &&
-      datos.eleccionesCaracteristicaRaza.length !== raza.eleccionLibre.cantidad
+      data.edition === "2014" &&
+      race.freeChoice &&
+      data.raceAbilityChoices.length !== race.freeChoice.count
     ) {
       return false;
     }
     return true;
   }
 
-  if (paso === 2) {
-    const clase = CLASES_SRD.find((c) => c.id === datos.claseId);
-    if (!clase) return false;
-    return datos.habilidadesClaseElegidas.length === clase.numHabilidadesElegibles;
+  if (step === 2) {
+    const characterClass = CLASSES_SRD.find((c) => c.id === data.classId);
+    if (!characterClass) return false;
+    return data.chosenClassSkills.length === characterClass.skillChoiceCount;
   }
 
-  if (paso === 3) {
-    const trasfondo = datos.trasfondoDatos;
-    if (!trasfondo) return false;
-    if (datos.idiomasTrasfondoElegidos.length !== trasfondo.numIdiomasElegibles) return false;
-    if (datos.edicion === "2024" && trasfondo.bonificadorCaracteristicas && datos.bonificadorTrasfondo.modo === "reparto") {
-      const { mas2, mas1 } = datos.bonificadorTrasfondo;
-      if (!mas2 || !mas1 || mas2 === mas1) return false;
+  if (step === 3) {
+    const background = data.backgroundData;
+    if (!background) return false;
+    if (data.chosenBackgroundLanguages.length !== background.languageChoiceCount) return false;
+    if (data.edition === "2024" && background.abilityBonusOptions && data.backgroundBonus.mode === "split") {
+      const { plus2, plus1 } = data.backgroundBonus;
+      if (!plus2 || !plus1 || plus2 === plus1) return false;
     }
-    if (datos.edicion === "2024") {
-      const { modo, doteElegida, manualNombre, manualDescripcion } = datos.doteOrigen;
-      if (modo === "catalogo" && !doteElegida) return false;
-      if (modo === "manual" && (!manualNombre.trim() || !manualDescripcion.trim())) return false;
+    if (data.edition === "2024") {
+      const { mode, chosenFeat, manualName, manualDescription } = data.originFeat;
+      if (mode === "catalog" && !chosenFeat) return false;
+      if (mode === "manual" && (!manualName.trim() || !manualDescription.trim())) return false;
     }
     return true;
   }
 
-  if (paso === 4) {
-    const valores = CARACTERISTICAS.map((c) => datos.puntuacionesBase[c]);
-    if (datos.metodoPuntuaciones === "array") {
-      const arrayValido = (ARRAY_ESTANDAR as readonly number[]).slice().sort().join(",");
-      return valores.slice().sort().join(",") === arrayValido;
+  if (step === 4) {
+    const values = ABILITIES.map((c) => data.baseScores[c]);
+    if (data.scoreMethod === "array") {
+      const validArray = (STANDARD_ARRAY as readonly number[]).slice().sort().join(",");
+      return values.slice().sort().join(",") === validArray;
     }
-    return valores.every((v) => Number.isFinite(v) && v >= 1 && v <= 30);
+    return values.every((v) => Number.isFinite(v) && v >= 1 && v <= 30);
   }
 
   return true;

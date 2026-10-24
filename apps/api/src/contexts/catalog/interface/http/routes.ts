@@ -4,15 +4,15 @@ import { z } from "zod";
 
 import type { RequireAuth } from "../../../../main/http/auth";
 import type { CatalogService } from "../../application/catalog-service";
-import { RECURSOS_CATALOGO } from "../../domain/catalog";
+import { CATALOG_RESOURCES } from "../../domain/catalog";
 
 const CACHE_CONTROL = "public, max-age=3600, stale-while-revalidate=86400";
 
-export function rutasCatalog(catalog: CatalogService, requireAuth: RequireAuth) {
+export function catalogRoutes(catalog: CatalogService, requireAuth: RequireAuth) {
   return async (app: FastifyInstance) => {
     const r = app.withTypeProvider<ZodTypeProvider>();
-    // El catálogo es contenido público del SRD, pero se protege igualmente: es el único
-    // modo de limitar el uso de la API como proxy abierto hacia Open5e.
+    // The catalog is public SRD content, but it is protected anyway: it is the only
+    // way to keep the API from being used as an open proxy to Open5e.
     app.addHook("preHandler", requireAuth);
 
     r.get(
@@ -30,21 +30,21 @@ export function rutasCatalog(catalog: CatalogService, requireAuth: RequireAuth) 
       },
       async (request, reply) => {
         reply.header("Cache-Control", CACHE_CONTROL);
-        return catalog.buscarMonstruos(request.query);
+        return catalog.searchMonsters(request.query);
       }
     );
 
     r.get(
-      "/catalog/:recurso",
+      "/catalog/:resource",
       {
         schema: {
-          params: z.object({ recurso: z.enum(RECURSOS_CATALOGO as [string, ...string[]]) }),
-          querystring: z.object({ edicion: z.enum(["2014", "2024"]).default("2014") }),
+          params: z.object({ resource: z.enum(CATALOG_RESOURCES as [string, ...string[]]) }),
+          querystring: z.object({ edition: z.enum(["2014", "2024"]).default("2014") }),
         },
       },
       async (request, reply) => {
         reply.header("Cache-Control", CACHE_CONTROL);
-        const results = await catalog.listar(request.params.recurso as (typeof RECURSOS_CATALOGO)[number], request.query.edicion);
+        const results = await catalog.list(request.params.resource as (typeof CATALOG_RESOURCES)[number], request.query.edition);
         return { results };
       }
     );

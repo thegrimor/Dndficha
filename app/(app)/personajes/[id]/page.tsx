@@ -1,25 +1,25 @@
 import { notFound } from "next/navigation";
 
-import { obtenerPersonaje } from "@/actions/personajes";
-import { CompartirFicha } from "@/components/ficha/compartir-ficha";
-import { FichaCompleta } from "@/components/ficha/ficha-completa";
-import { MarcarPersonajeActivo } from "@/components/ficha/marcar-personaje-activo";
+import { getCharacter } from "@/actions/characters";
+import { ShareSheet } from "@/components/sheet/share-sheet";
+import { FullSheet } from "@/components/sheet/full-sheet";
+import { MarkActiveCharacter } from "@/components/sheet/mark-active-character";
 
-export default async function FichaPersonajePage({
+export default async function CharacterSheetPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const personaje = await obtenerPersonaje(id);
+  const character = await getCharacter(id);
 
-  if (!personaje) notFound();
+  if (!character) notFound();
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <MarcarPersonajeActivo id={personaje.id} />
-      <CompartirFicha personaje={personaje} />
-      <FichaCompleta personaje={personaje} />
+      <MarkActiveCharacter id={character.id} />
+      <ShareSheet character={character} />
+      <FullSheet character={character} />
     </div>
   );
 }

@@ -1,73 +1,73 @@
-import { DOCUMENT_KEY_POR_EDICION, type EdicionDnD } from "@dndficha/rules";
+import { DOCUMENT_KEY_BY_EDITION, type DndEdition } from "@dndficha/rules";
 
 import { DomainError } from "../../../shared-kernel/domain-error";
-import { esRecursoPorEdicion, type BusquedaMonstruos, type Open5eGateway, type PaginaOpen5e, type RecursoCatalogo } from "../domain/catalog";
+import { isEditionResource, type MonsterSearchParams, type Open5eGateway, type Open5ePage, type CatalogResource } from "../domain/catalog";
 
 const BASE_V1 = "https://api.open5e.com/v1/";
 const BASE_V2 = "https://api.open5e.com/v2/";
 const TIMEOUT_MS = 8000;
-const TAMANO_PAGINA = 100;
-const MAX_PAGINAS = 30;
-const PRESUPUESTO_TOTAL_MS = 45_000;
+const PAGE_SIZE = 100;
+const MAX_PAGES = 30;
+const TOTAL_BUDGET_MS = 45_000;
 
 type Fetch = typeof fetch;
 
 /**
- * Anti-corruption layer hacia Open5e: encapsula las diferencias v1/v2, el
- * filtrado por documento (edición) y los fallos de red.
+ * Anti-corruption layer towards Open5e: encapsulates the v1/v2 differences,
+ * filtering by document (edition) and network failures.
  *
- * Los filtros `search`/`level`/`school`/`type` no siempre se aplican del lado
- * de Open5e, así que se baja el catálogo completo (cacheado en el servicio) y
- * el cliente filtra. La excepción son los monstruos, demasiados para agregar.
+ * The `search`/`level`/`school`/`type` filters are not always applied on the
+ * Open5e side, so the full catalog is downloaded (cached in the service) and
+ * the client filters. Monsters are the exception: too many to aggregate.
  */
 export class Open5eHttpGateway implements Open5eGateway {
   constructor(private fetchFn: Fetch = fetch) {}
 
-  async listarCompleto(recurso: RecursoCatalogo, edicion: EdicionDnD): Promise<unknown[]> {
-    const v2 = esRecursoPorEdicion(recurso);
+  async listAll(resource: CatalogResource, edition: DndEdition): Promise<unknown[]> {
+    const v2 = isEditionResource(resource);
     const base = v2 ? BASE_V2 : BASE_V1;
-    const resultados: unknown[] = [];
-    const inicio = Date.now();
+    const results: unknown[] = [];
+    const startedAt = Date.now();
 
-    for (let pagina = 0; pagina < MAX_PAGINAS; pagina++) {
-      if (Date.now() - inicio > PRESUPUESTO_TOTAL_MS) {
-        throw new DomainError("unavailable", `Open5e tardó demasiado agregando ${recurso}`, "open5e_unavailable");
+    for (let page = 0; page < MAX_PAGES; page++) {
+      if (Date.now() - startedAt > TOTAL_BUDGET_MS) {
+        throw new DomainError("unavailable", `Open5e tardó demasiado agregando ${resource}`, "open5e_unavailable");
       }
-      const url = new URL(`${recurso}/`, base);
-      url.searchParams.set("limit", String(TAMANO_PAGINA));
-      url.searchParams.set("offset", String(pagina * TAMANO_PAGINA));
-      if (v2) url.searchParams.set("document__key", DOCUMENT_KEY_POR_EDICION[edicion]);
+      const url = new URL(`${resource}/`, base);
+      url.searchParams.set("limit", String(PAGE_SIZE));
+      url.searchParams.set("offset", String(page * PAGE_SIZE));
+      if (v2) url.searchParams.set("document__key", DOCUMENT_KEY_BY_EDITION[edition]);
 
-      const datos = await this.pedir(url.toString());
-      resultados.push(...datos.results);
-      if (!datos.next || datos.results.length === 0) break;
+      const data = await this.request(url.toString());
+      results.push(...data.results);
+      if (!data.next || data.results.length === 0) break;
     }
-    return resultados;
+    return results;
   }
 
-  buscarMonstruos(busqueda: BusquedaMonstruos): Promise<PaginaOpen5e> {
+  searchMonsters(query: MonsterSearchParams): Promise<Open5ePage> {
     const url = new URL("monsters/", BASE_V1);
-    for (const [clave, valor] of Object.entries(busqueda)) {
-      if (valor !== undefined && valor !== "") url.searchParams.set(clave, String(valor));
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
     }
-    return this.pedir(url.toString());
+    return this.request(url.toString());
   }
 
-  private async pedir(url: string): Promise<PaginaOpen5e> {
+  private async request(url: string): Promise<Open5ePage> {
     try {
-      return await this.intentar(url);
+      return await this.attempt(url);
     } catch {
       try {
-        return await this.intentar(url);
+        return await this.attempt(url);
       } catch {
         throw new DomainError("unavailable", "Open5e no está disponible", "open5e_unavailable");
       }
     }
   }
 
-  private async intentar(url: string): Promise<PaginaOpen5e> {
-    const respuesta = await this.fetchFn(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-    if (!respuesta.ok) throw new Error(`Open5e respondió ${respuesta.status} para ${url}`);
-    return (await respuesta.json()) as PaginaOpen5e;
+  private async attempt(url: string): Promise<Open5ePage> {
+    const response = await this.fetchFn(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (!response.ok) throw new Error(`Open5e responded ${response.status} for ${url}`);
+    return (await response.json()) as Open5ePage;
   }
 }

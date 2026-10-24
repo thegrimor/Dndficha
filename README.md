@@ -1,37 +1,38 @@
 # Dndficha
 
-Aplicación web de fichas de personaje de D&D 5e, con cuentas, guardado en la nube,
-asistente de creación y un buscador integrado del SRD (vía [Open5e](https://open5e.com)).
+D&D 5e character sheet web app with accounts, cloud storage, a character creation
+wizard and a built-in SRD search ([Open5e](https://open5e.com)). The UI is in Spanish;
+the code, comments and documentation are in English.
 
-## Arquitectura
+## Architecture
 
-Monorepo con npm workspaces:
+Monorepo with npm workspaces:
 
-| Ruta | Qué es |
+| Path | What it is |
 | --- | --- |
-| `/` (raíz) | Front: Next.js 16 (App Router), Tailwind 4, TanStack Query. Desplegado en Netlify. |
-| `apps/api` | Backend: Fastify + TypeScript + Drizzle sobre Postgres, organizado por bounded contexts (DDD). Desplegado en Railway. |
-| `packages/rules` | Reglas puras de D&D (cálculos, datos SRD, tipos de la ficha y del wizard) compartidas por front y API. |
+| `/` (root) | Front end: Next.js 16 (App Router), Tailwind 4, TanStack Query. Deployed on Netlify. |
+| `apps/api` | Backend: Fastify + TypeScript + Drizzle on Postgres, organized by bounded contexts (DDD). Deployed on Railway. |
+| `packages/rules` | Pure D&D rules (calculations, SRD data, sheet and wizard types) shared by front end and API. |
 
-El navegador **nunca habla con la API**: Server Actions y Route Handlers de Next la llaman
-desde el servidor (`lib/api/cliente.ts`), reenviando el token de sesión que vive en una
-cookie `httpOnly` (`sid`) del propio front. No hay CORS ni cookies entre sitios.
+The browser **never talks to the API**: Next Server Actions and Route Handlers call it
+from the server (`lib/api/client.ts`), forwarding the session token that lives in an
+`httpOnly` cookie (`sid`) of the front end itself. No CORS and no cross-site cookies.
 
 ### Bounded contexts (`apps/api/src/contexts/*`)
 
-Cada uno tiene `domain/`, `application/`, `infrastructure/` e `interface/http/`.
+Each one has `domain/`, `application/`, `infrastructure/` and `interface/http/`.
 
-- **identity**: registro, login y sesiones (token opaco, solo se guarda su SHA-256; contraseñas con argon2id).
-- **catalog**: anti-corruption layer sobre Open5e con caché persistente en Postgres (sirve la copia caducada si Open5e cae).
-- **characters**: aggregate `Character` (identidad + núcleo de la ficha) y ensamblado de la ficha completa.
-- **character-creation**: validación de las elecciones del wizard contra el SRD y construcción de la ficha de nivel 1.
-- **inventory**, **spellcasting** (libro de hechizos y espacios de conjuro), **sharing** (enlace público).
+- **identity**: sign up, sign in and sessions (opaque token, only its SHA-256 is stored; passwords with argon2id).
+- **catalog**: anti-corruption layer over Open5e with a persistent Postgres cache (serves the stale copy if Open5e is down).
+- **characters**: `Character` aggregate (identity + sheet core) and assembly of the full sheet.
+- **character-creation**: validates the wizard's choices against the SRD and builds the level 1 sheet.
+- **inventory**, **spellcasting** (spellbook and spell slots), **sharing** (public link).
 
-Los contextos se comunican por puertos y por eventos de dominio (p. ej. `CharacterDeleted` limpia
-inventario, hechizos y enlace). La composición está en `apps/api/src/main/container.ts`.
-Autorización: cada caso de uso comprueba que el personaje es del usuario (404 si no, sin revelar que existe).
+Contexts talk through ports and domain events (e.g. `CharacterDeleted` cleans up inventory,
+spells and the link). Wiring lives in `apps/api/src/main/container.ts`.
+Authorization: every use case checks that the character belongs to the user (404 otherwise, without revealing it exists).
 
-## Desarrollo local
+## Local development
 
 ```bash
 npm install
@@ -44,48 +45,53 @@ npm run db:migrate -w @dndficha/api
 # 2. API (http://localhost:3001)
 npm run dev -w @dndficha/api
 
-# 3. Front (http://localhost:3000)
+# 3. Front end (http://localhost:3000)
 cp .env.local.example .env.local      # API_URL=http://localhost:3001
 npm run dev
 ```
 
 ## Scripts
 
-- `npm test`: tests de todos los workspaces. Los de la API usan PGlite (Postgres real en WASM), sin Docker.
-- `npm run lint` / `npx tsc --noEmit`: front. `npm run typecheck -w @dndficha/api`: API.
-- `npm run db:generate -w @dndficha/api`: genera una migración Drizzle tras cambiar un `schema.ts`.
+- `npm test`: tests of all workspaces. The API ones use PGlite (real Postgres in WASM), no Docker needed.
+- `npm run lint` / `npx tsc --noEmit`: front end. `npm run typecheck -w @dndficha/api`: API.
+- `npm run db:generate -w @dndficha/api`: generates a Drizzle migration after changing a `schema.ts`.
 
-## Despliegue
+## Deployment
 
-**API en Railway**: crear un servicio desde este repo (sin Root Directory) y un servicio Postgres.
-`railway.json` ya define el Dockerfile (`apps/api/Dockerfile`), el healthcheck (`/health`) y el
-pre-deploy `node dist/migrate.js`. Variables del servicio API:
+**API on Railway**: create a service from this repo (leave Root Directory empty) and a Postgres service.
+`railway.json` already defines the Dockerfile (`apps/api/Dockerfile`), the healthcheck (`/health`) and the
+pre-deploy `node dist/migrate.js`. Variables of the API service:
 
-- `DATABASE_URL`: referencia al Postgres de Railway (URL de red privada).
+- `DATABASE_URL`: reference to the Railway Postgres (private network URL).
 - `NODE_ENV=production`
-- `CORS_ORIGINS`: vacío si solo la llama el servidor de Next (lo habitual).
-- `ADMIN_TOKEN` y `WEB_URL`: para la recuperación de contraseñas (ver Notas).
+- `CORS_ORIGINS`: empty if only the Next server calls it (the usual case).
+- `ADMIN_TOKEN` and `WEB_URL`: for password recovery (see Notes).
 
-**Front en Netlify**: variable `API_URL` con la URL pública del servicio API de Railway.
+**Front end on Netlify**: `API_URL` variable with the public URL of the Railway API service.
 
-## Notas
+## Notes
 
-- Next.js 16 renombró `middleware.ts` a `proxy.ts`. Aquí solo comprueba que exista la cookie de
-  sesión; la validez real la decide la API.
-- Open5e: la API filtra mal por `level`/`school`/`type`, así que el catálogo se baja completo (una
-  vez por edición y recurso, cacheado) y se filtra en el cliente. Los monstruos son la excepción.
-- **Recuperación de contraseña sin correo** (pensada para pocos usuarios de confianza): si alguien olvida
-  la suya, el administrador genera un enlace de un solo uso (24 h) y se lo pasa por el canal que quiera:
+- Next.js 16 renamed `middleware.ts` to `proxy.ts`. Here it only checks that the session cookie
+  exists; its real validity is decided by the API.
+- Open5e filters poorly by `level`/`school`/`type`, so the catalog is downloaded in full (once per
+  edition and resource, cached) and filtered on the client. Monsters are the exception.
+- **Password recovery without email** (meant for a few trusted users): if someone forgets theirs,
+  the administrator generates a single-use link (24 h) and hands it over through any channel:
 
   ```bash
   curl -X POST "$API_URL/admin/reset-tokens" \
     -H "x-admin-token: $ADMIN_TOKEN" -H "content-type: application/json" \
-    -d '{"email":"amigo@example.com"}'
-  # -> { "url": "https://tu-front/restablecer?token=...", "expiresAt": "..." }
+    -d '{"email":"friend@example.com"}'
+  # -> { "url": "https://your-front/restablecer?token=...", "expiresAt": "..." }
   ```
 
-  El usuario abre el enlace, elige la contraseña nueva y se cierran todas sus sesiones. Un enlace nuevo
-  anula el anterior. La ruta solo existe si el servicio API tiene `ADMIN_TOKEN` (≥ 32 caracteres, p. ej.
-  `openssl rand -hex 32`); `WEB_URL` hace que la respuesta traiga el enlace completo.
-- Sin confirmación de correo al registrarse: cualquiera que llegue a la página de registro puede crear
-  cuenta. Si no quieres eso, avísame y se añade un código de invitación.
+  The user opens the link, picks a new password and all their sessions are closed. A new link
+  invalidates the previous one. The route only exists if the API service has `ADMIN_TOKEN`
+  (>= 32 characters, e.g. `openssl rand -hex 32`); `WEB_URL` makes the response include the full link.
+- No email confirmation on sign up: anyone who reaches the sign-up page can create an account.
+
+## Conventions
+
+Code, comments, commit messages and documentation are written in English. Only text the
+end user sees (UI copy, API error messages shown in the UI, SRD content in Spanish and the
+URL paths) stays in Spanish.

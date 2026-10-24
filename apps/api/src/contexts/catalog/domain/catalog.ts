@@ -1,20 +1,20 @@
-import type { EdicionDnD } from "@dndficha/rules";
+import type { DndEdition } from "@dndficha/rules";
 
-/** Recursos que Open5e sirve por edición (v2: separa SRD 2014 y SRD 2024). */
-export const RECURSOS_POR_EDICION = ["spells", "magicitems", "backgrounds"] as const;
-/** Recursos que solo existen en la SRD 2014 (v1). */
-export const RECURSOS_SIN_EDICION = ["weapons", "armor", "races", "classes", "feats"] as const;
+/** Resources Open5e serves per edition (v2: separates SRD 2014 and SRD 2024). */
+export const EDITION_RESOURCES = ["spells", "magicitems", "backgrounds"] as const;
+/** Resources that only exist in the 2014 SRD (v1). */
+export const NON_EDITION_RESOURCES = ["weapons", "armor", "races", "classes", "feats"] as const;
 
-export type RecursoPorEdicion = (typeof RECURSOS_POR_EDICION)[number];
-export type RecursoSinEdicion = (typeof RECURSOS_SIN_EDICION)[number];
-export type RecursoCatalogo = RecursoPorEdicion | RecursoSinEdicion;
+export type EditionResource = (typeof EDITION_RESOURCES)[number];
+export type NonEditionResource = (typeof NON_EDITION_RESOURCES)[number];
+export type CatalogResource = EditionResource | NonEditionResource;
 
-export const RECURSOS_CATALOGO: readonly RecursoCatalogo[] = [...RECURSOS_POR_EDICION, ...RECURSOS_SIN_EDICION];
+export const CATALOG_RESOURCES: readonly CatalogResource[] = [...EDITION_RESOURCES, ...NON_EDITION_RESOURCES];
 
-export const esRecursoPorEdicion = (r: RecursoCatalogo): r is RecursoPorEdicion =>
-  (RECURSOS_POR_EDICION as readonly string[]).includes(r);
+export const isEditionResource = (r: CatalogResource): r is EditionResource =>
+  (EDITION_RESOURCES as readonly string[]).includes(r);
 
-export interface BusquedaMonstruos {
+export interface MonsterSearchParams {
   search?: string;
   limit?: number;
   offset?: number;
@@ -22,17 +22,17 @@ export interface BusquedaMonstruos {
   cr?: string;
 }
 
-export interface PaginaOpen5e {
+export interface Open5ePage {
   count: number;
   next: string | null;
   previous: string | null;
   results: unknown[];
 }
 
-/** Puerto hacia la fuente externa (Open5e). Lanza `DomainError` unavailable si no responde. */
+/** Port to the external source (Open5e). Throws an `unavailable` `DomainError` if it does not respond. */
 export interface Open5eGateway {
-  listarCompleto(recurso: RecursoCatalogo, edicion: EdicionDnD): Promise<unknown[]>;
-  buscarMonstruos(busqueda: BusquedaMonstruos): Promise<PaginaOpen5e>;
+  listAll(resource: CatalogResource, edition: DndEdition): Promise<unknown[]>;
+  searchMonsters(query: MonsterSearchParams): Promise<Open5ePage>;
 }
 
 export interface CatalogCache {

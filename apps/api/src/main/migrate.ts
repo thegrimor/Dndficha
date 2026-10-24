@@ -2,10 +2,10 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
 
-import { cargarConfig } from "./config";
+import { loadConfig } from "./config";
 
-// Se ejecuta como pre-deploy command en Railway: `node dist/migrate.js`.
-const config = cargarConfig();
+// Runs as a pre-deploy command on Railway: `node dist/migrate.js`.
+const config = loadConfig();
 const pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: 1 });
 
 try {
